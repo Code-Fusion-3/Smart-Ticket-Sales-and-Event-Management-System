@@ -175,19 +175,28 @@ CREATE TABLE booking_items (
 );
 
 -- Ticket Resales table
-CREATE TABLE ticket_resales (
+CREATE TABLE IF NOT EXISTS ticket_resales (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ticket_id INT NOT NULL,
     seller_id INT NOT NULL,
+    buyer_id INT NULL,
     resale_price DECIMAL(10, 2) NOT NULL,
-    status ENUM('active', 'sold', 'canceled') DEFAULT 'active',
+    platform_fee DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    seller_earnings DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    description TEXT,
+    status ENUM('active', 'sold', 'canceled', 'expired') DEFAULT 'active',
+    listed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sold_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
     FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_ticket (ticket_id),
     INDEX idx_seller (seller_id),
-    INDEX idx_status (status)
+    INDEX idx_buyer (buyer_id),
+    INDEX idx_status (status),
+    INDEX idx_listed_at (listed_at)
 );
 
 -- Ticket Verifications table
