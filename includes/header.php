@@ -37,7 +37,8 @@ require_once 'auth.php';
                         <?php elseif (hasRole('agent')): ?>
                             <a href="<?php echo SITE_URL; ?>/agent" class="hover:text-indigo-200">Agent Dashboard</a>
                         <?php elseif (hasRole('customer')): ?>
-                            <a href="<?php echo SITE_URL; ?>/customer" class="hover:text-indigo-200">My Account</a>
+                            <a href="<?php echo SITE_URL; ?>/accounts" class="hover:text-indigo-200">My Account</a>
+                            <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Market-place</a>
                             <a href="<?php echo SITE_URL; ?>/cart.php" class="hover:text-indigo-200">
                                 <i class="fas fa-shopping-cart"></i> Cart
                                 <?php

@@ -514,9 +514,7 @@ function sendEnhancedSMS($phoneNumber, $message) {
     $smsLogId = $db->insert($logSql);
     
     try {
-        // For demo purposes, we'll simulate SMS sending
-        // In production, integrate with SMS gateway like Twilio, Nexmo, etc.
-        
+        // For demo purposes, we'll simulate SMS sending        
         // Simulate API call delay
         usleep(500000); // 0.5 second delay
         

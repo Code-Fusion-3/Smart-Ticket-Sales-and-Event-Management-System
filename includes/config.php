@@ -10,7 +10,7 @@ define('DB_NAME', 'ticket_management_system');
 
 // Website configuration
 define('SITE_NAME', 'Smart Ticket Sales and Event Management System');
-define('SITE_URL', 'http://localhost/utb/smart_ticket_system');
+define('SITE_URL', 'http://localhost/utb/Smart-Ticket-Sales-and-Event-Management-System');
 
 // File paths
 define('ROOT_PATH', dirname(__DIR__) . '/');
