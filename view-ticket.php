@@ -13,7 +13,7 @@ if (!isLoggedIn()) {
 
 $userId = getCurrentUserId();
 $ticketId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
+$isNewPurchase = isset($_GET['new']) && $_GET['new'] == '1';
 // Get ticket details
 $sql = "SELECT t.*, 
                e.title as event_title, e.description as event_description, 
@@ -75,8 +75,8 @@ $qrCodeData = json_encode([
 
 include 'includes/header.php';
 ?>
-
-<div class="container mx-auto px-4 py-8">
+       
+        <div class="container mx-auto px-4 py-8">
     <div class="max-w-4xl mx-auto">
         <!-- Navigation -->
         <div class="mb-6">
@@ -84,6 +84,51 @@ include 'includes/header.php';
                 <i class="fas fa-arrow-left mr-2"></i> Back to My Tickets
             </a>
         </div>
+        
+        <!-- Success Message for New Purchase -->
+        <?php if ($isNewPurchase): ?>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6 animate-pulse">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-500 text-2xl mr-3"></i>
+                <div>
+                    <h3 class="font-bold text-lg">🎉 Purchase Successful!</h3>
+                    <p class="text-sm mt-1">
+                        Your ticket has been purchased successfully! A confirmation email has been sent to 
+                        <strong><?php echo htmlspecialchars($ticket['recipient_email']); ?></strong>
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-200 text-green-800">
+                            <i class="fas fa-envelope mr-1"></i> Email Sent
+                        </span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-200 text-blue-800">
+                            <i class="fas fa-qrcode mr-1"></i> QR Code Ready
+                        </span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
+                            <i class="fas fa-download mr-1"></i> Download Available
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white border border-indigo-200 rounded-lg p-4 mb-6">
+            <h4 class="font-semibold text-gray-900 mb-3">Quick Actions</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <a href="download-ticket.php?id=<?php echo $ticketId; ?>" 
+                   class="flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded transition duration-300">
+                    <i class="fas fa-download mr-2"></i> Download Ticket
+                </a>
+                <a href="email-ticket.php?id=<?php echo $ticketId; ?>" 
+                   class="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition duration-300">
+                    <i class="fas fa-envelope mr-2"></i> Email Again
+                </a>
+                <a href="event-details.php?id=<?php echo $ticket['event_id']; ?>" 
+                   class="flex items-center justify-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition duration-300">
+                    <i class="fas fa-info-circle mr-2"></i> Event Details
+                </a>
+            </div>
+        </div>
+        <?php endif; ?>
         
         <!-- Professional Ticket Design -->
         <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-8 relative">

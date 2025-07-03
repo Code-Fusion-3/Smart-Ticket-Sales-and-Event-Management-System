@@ -1,0 +1,108 @@
+/* Custom form styling */
+.form-checkbox:checked {
+    background-color: #4F46E5;
+    border-color: #4F46E5;
+}
+
+.payment-method-option:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.payment-method-option.selected {
+    border-color: #4F46E5 !important;
+    background-color: #EEF2FF !important;
+}
+
+/* Loading animation */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Smooth transitions */
+.transition-all {
+    transition: all 0.3s ease;
+}
+
+/* Input focus states */
+input:focus,
+select:focus {
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Button hover effects */
+button:hover {
+    transform: translateY(-1px);
+}
+
+/* Card styling */
+.bg-white {
+    backdrop-filter: blur(10px);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .grid-cols-3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid-cols-3>div:last-child {
+        grid-column: span 2;
+    }
+
+    .text-3xl {
+        font-size: 1.875rem;
+    }
+
+    .sticky {
+        position: relative !important;
+        top: auto !important;
+    }
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .bg-indigo-600 {
+        background-color: #000 !important;
+        color: #fff !important;
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .border-gray-300 {
+        border-color: #000;
+    }
+
+    .text-gray-600 {
+        color: #000;
+    }
+}

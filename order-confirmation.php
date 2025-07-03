@@ -12,43 +12,79 @@ if (!isLoggedIn()) {
 
 $userId = getCurrentUserId();
 
-// Check if order reference exists in session
-if (!isset($_SESSION['order_reference'])) {
+// Check if order details exist in session (new approach)
+if (isset($_SESSION['order_details'])) {
+    $orderDetails = $_SESSION['order_details'];
+    $orderReference = $orderDetails['reference'];
+    $generatedTickets = $orderDetails['tickets'];
+    
+    // Clear from session after use
+    unset($_SESSION['order_details']);
+    
+    // Get transaction details for verification
+    $transactionSql = "SELECT * FROM transactions 
+                       WHERE user_id = $userId 
+                       AND reference_id = '" . $db->escape($orderReference) . "'
+                       AND type = 'purchase'
+                       ORDER BY created_at DESC LIMIT 1";
+    $transaction = $db->fetchOne($transactionSql);
+    
+} else {
+    // Fallback: Check if order reference exists in session (old approach)
+    if (!isset($_SESSION['order_reference'])) {
+        $_SESSION['error_message'] = "No order found. Please check your tickets in My Tickets.";
+        redirect('my-tickets.php');
+    }
+
+    $orderReference = $_SESSION['order_reference'];
+    unset($_SESSION['order_reference']); // Clear from session after use
+
+    // Get transaction details
+    $transactionSql = "SELECT * FROM transactions 
+                       WHERE user_id = $userId 
+                       AND reference_id = '" . $db->escape($orderReference) . "'
+                       AND type = 'purchase'
+                       ORDER BY created_at DESC";
+    $transaction = $db->fetchOne($transactionSql);
+
+    if (!$transaction) {
+        $_SESSION['error_message'] = "Order not found. Please check your tickets in My Tickets.";
+        redirect('my-tickets.php');
+    }
+
+    // Get tickets from this purchase
+    $ticketsSql = "SELECT t.id, t.event_id, t.ticket_type_id, t.recipient_name, t.recipient_email, 
+                          t.recipient_phone, t.qr_code, t.purchase_price, t.created_at,
+                          e.title as event_title, e.venue, e.city, e.start_date, e.start_time,
+                          tt.name as ticket_type_name
+                   FROM tickets t
+                   JOIN events e ON t.event_id = e.id
+                   LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id
+                   WHERE t.user_id = $userId 
+                   AND t.created_at >= '" . $transaction['created_at'] . "'
+                   AND t.created_at <= DATE_ADD('" . $transaction['created_at'] . "', INTERVAL 1 MINUTE)
+                   ORDER BY t.id ASC";
+    $generatedTickets = $db->fetchAll($ticketsSql);
+    
+    // Convert to the format expected by the template
+    foreach ($generatedTickets as &$ticket) {
+        $ticket['event_title'] = $ticket['event_title'];
+        $ticket['ticket_name'] = $ticket['ticket_type_name'] ?? 'Standard Ticket';
+        $ticket['venue'] = $ticket['venue'];
+        $ticket['city'] = $ticket['city'];
+        $ticket['start_date'] = $ticket['start_date'];
+        $ticket['start_time'] = $ticket['start_time'];
+    }
+}   
+
+if (empty($generatedTickets)) {
+    $_SESSION['error_message'] = "No tickets found for this order. Please check your tickets in My Tickets.";
     redirect('my-tickets.php');
 }
 
-$orderReference = $_SESSION['order_reference'];
-unset($_SESSION['order_reference']); // Clear from session after use
-
-// Get transaction details
-$transactionSql = "SELECT * FROM transactions 
-                   WHERE user_id = $userId 
-                   AND reference_id = '" . $db->escape($orderReference) . "'
-                   AND type = 'purchase'
-                   ORDER BY created_at DESC";
-$transaction = $db->fetchOne($transactionSql);
-
-if (!$transaction) {
-    redirect('my-tickets.php');
-}
-
-// Get tickets from this purchase
-$ticketsSql = "SELECT t.id, t.event_id, t.ticket_type_id, t.recipient_name, t.recipient_email, 
-                      t.recipient_phone, t.qr_code, t.purchase_price, t.created_at,
-                      e.title as event_title, e.venue, e.city, e.start_date, e.start_time,
-                      tt.name as ticket_type_name
-               FROM tickets t
-               JOIN events e ON t.event_id = e.id
-               LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id
-               WHERE t.user_id = $userId 
-               AND t.created_at >= '" . $transaction['created_at'] . "'
-               AND t.created_at <= DATE_ADD('" . $transaction['created_at'] . "', INTERVAL 1 MINUTE)
-               ORDER BY t.id ASC";
-$tickets = $db->fetchAll($ticketsSql);
-
-// Get total amount
+// Calculate totals
 $totalAmount = 0;
-foreach ($tickets as $ticket) {
+foreach ($generatedTickets as $ticket) {
     $totalAmount += $ticket['purchase_price'];
 }
 
@@ -62,7 +98,7 @@ $serviceFee = $feeTransaction ? $feeTransaction['amount'] : 0;
 
 // Group tickets by event
 $ticketsByEvent = [];
-foreach ($tickets as $ticket) {
+foreach ($generatedTickets as $ticket) {
     $eventId = $ticket['event_id'];
     if (!isset($ticketsByEvent[$eventId])) {
         $ticketsByEvent[$eventId] = [
@@ -88,8 +124,8 @@ include 'includes/header.php';
                 <i class="fas fa-check-circle text-green-500 text-2xl"></i>
             </div>
             <div class="ml-3">
-                <h3 class="text-lg font-semibold">Thank you for your purchase!</h3>
-                <p>Your order has been successfully processed. Your tickets are ready.</p>
+                <h3 class="text-lg font-semibold">🎉 Thank you for your purchase!</h3>
+                <p>Your order has been successfully processed. Your <?php echo count($generatedTickets); ?> ticket<?php echo count($generatedTickets) > 1 ? 's are' : ' is'; ?> ready.</p>
             </div>
         </div>
         
@@ -107,7 +143,7 @@ include 'includes/header.php';
                     </div>
                     <div>
                         <h3 class="text-gray-500 text-sm font-semibold uppercase mb-2">Order Date</h3>
-                        <p><?php echo formatDateTime($transaction['created_at']); ?></p>
+                        <p><?php echo formatDateTime($transaction['created_at'] ?? date('Y-m-d H:i:s')); ?></p>
                     </div>
                     <div>
                         <h3 class="text-gray-500 text-sm font-semibold uppercase mb-2">Payment Method</h3>
@@ -143,7 +179,7 @@ include 'includes/header.php';
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                <?php foreach ($tickets as $ticket): ?>
+                                <?php foreach ($generatedTickets as $ticket): ?>
                                     <tr>
                                         <td class="px-4 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900">
@@ -155,7 +191,7 @@ include 'includes/header.php';
                                         </td>
                                         <td class="px-4 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-900">
-                                                <?php echo htmlspecialchars($ticket['ticket_type_name'] ?? 'Standard Ticket'); ?>
+                                                <?php echo htmlspecialchars($ticket['ticket_name'] ?? 'Standard Ticket'); ?>
                                             </div>
                                         </td>
                                         <td class="px-4 py-4 whitespace-nowrap">

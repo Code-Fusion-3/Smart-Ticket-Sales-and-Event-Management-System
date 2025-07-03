@@ -46,9 +46,20 @@ if ($action == 'list') {
     $totalEvents = $countResult['total'];
     $totalPages = ceil($totalEvents / $perPage);
     
-    // Get events
-    $sql = "SELECT * FROM events $whereClause ORDER BY start_date DESC LIMIT $offset, $perPage";
-    $events = $db->fetchAll($sql);
+   // Get events with calculated status
+$sql = "SELECT *, 
+        CASE 
+            WHEN status = 'canceled' THEN 'canceled'
+            WHEN status = 'suspended' THEN 'suspended'
+            WHEN DATE(CONCAT(start_date, ' ', COALESCE(start_time, '00:00:00'))) < NOW() THEN 'completed'
+            WHEN status = 'active' AND DATE(CONCAT(start_date, ' ', COALESCE(start_time, '00:00:00'))) >= NOW() THEN 'active'
+            ELSE status
+        END as calculated_status,
+        status as original_status
+        FROM events $whereClause 
+        ORDER BY start_date DESC 
+        LIMIT $offset, $perPage";
+$events = $db->fetchAll($sql);
     
     include '../../includes/planner_header.php';
 ?>

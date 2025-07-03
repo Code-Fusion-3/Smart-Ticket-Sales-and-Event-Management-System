@@ -341,146 +341,203 @@ include 'includes/header.php';
                     </p>
                 </div>
 
-                <div class="p-6">
-                    <?php if ($totalAvailableTickets <= 0): ?>
-                    <div class="bg-red-100 text-red-700 p-4 rounded-lg mb-4">
-                        <p class="font-bold">Sold Out!</p>
-                        <p>Sorry, there are no more tickets available for this event.</p>
-                    </div>
-                    <?php elseif (strtotime($event['start_date']) < time()): ?>
-                    <div class="bg-yellow-100 text-yellow-700 p-4 rounded-lg mb-4">
-                        <p class="font-bold">Event Has Started</p>
-                        <p>This event has already begun. Ticket sales may be closed.</p>
-                    </div>
-                    <?php else: ?>
-                    <form method="POST" action="" id="ticket-form">
-                        <div class="space-y-6">
-                            <?php foreach ($ticketTypes as $index => $ticketType): ?>
-                            <div
-                                class="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition duration-300">
-                                <div class="flex justify-between items-start mb-3">
-                                    <div class="flex-1">
-                                        <h3 class="font-bold text-lg text-gray-900">
-                                            <?php echo htmlspecialchars($ticketType['name']); ?></h3>
-                                        <?php if (!empty($ticketType['description'])): ?>
-                                        <p class="text-sm text-gray-600 mt-1">
-                                            <?php echo htmlspecialchars($ticketType['description']); ?></p>
-                                        <?php endif; ?>
-                                        <div class="mt-2">
-                                            <span class="text-sm text-gray-500">
-                                                <?php echo number_format($ticketType['available_tickets']); ?> of
-                                                <?php echo number_format($ticketType['total_tickets'] ?? $ticketType['available_tickets']); ?>
-                                                available
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="text-right ml-4">
-                                        <div class="text-2xl font-bold text-indigo-600">
-                                            <?php echo formatCurrency($ticketType['price']); ?>
-                                        </div>
-                                    </div>
-                                </div>
+               <!-- Replace the ticket purchase section logic (around lines 400-420) -->
+<div class="p-6">
+    <?php if ($totalAvailableTickets <= 0): ?>
+    <div class="bg-red-100 text-red-700 p-4 rounded-lg mb-4">
+        <p class="font-bold">Sold Out!</p>
+        <p>Sorry, there are no more tickets available for this event.</p>
+    </div>
+    <?php elseif (strtotime($event['end_date']) < time()): ?>
+    <div class="bg-gray-100 text-gray-700 p-4 rounded-lg mb-4">
+        <p class="font-bold">Event Has Ended</p>
+        <p>This event has already finished. Ticket sales are now closed.</p>
+    </div>
+    <?php else: ?>
+    <!-- Show ticket purchase form for available events (upcoming + ongoing) -->
+    
+    <?php 
+    // Determine event status
+    $currentDate = date('Y-m-d');
+    $eventStatus = '';
+    if ($currentDate < $event['start_date']) {
+        $eventStatus = 'upcoming';
+    } elseif ($currentDate >= $event['start_date'] && $currentDate <= $event['end_date']) {
+        $eventStatus = 'ongoing';
+    } else {
+        $eventStatus = 'ended';
+    }
+    ?>
+    
+    <!-- Event Status Indicator -->
+    <?php if ($eventStatus === 'ongoing'): ?>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div class="flex items-center">
+            <i class="fas fa-circle text-red-500 mr-2 animate-pulse"></i>
+            <div>
+                <p class="font-bold">Event is Live Now!</p>
+                <p class="text-sm">This event is currently happening. You can still purchase tickets for immediate entry.</p>
+            </div>
+        </div>
+    </div>
+    <?php elseif ($eventStatus === 'upcoming'): ?>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div class="flex items-center">
+            <i class="fas fa-clock text-green-500 mr-2"></i>
+            <div>
+                <p class="font-bold">Upcoming Event</p>
+                <p class="text-sm">Event starts on <?php echo formatDate($event['start_date']); ?> at <?php echo formatTime($event['start_time']); ?></p>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
-                                <?php if ($ticketType['available_tickets'] > 0): ?>
-                                <div class="flex items-center justify-between">
-                                    <label for="quantity_<?php echo $ticketType['id']; ?>"
-                                        class="text-sm font-medium text-gray-700">
-                                        Quantity:
-                                    </label>
-                                    <div class="flex items-center">
-                                        <button type="button"
-                                            class="decrease-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-l"
-                                            data-ticket-id="<?php echo $ticketType['id']; ?>">
-                                            <i class="fas fa-minus"></i>
-                                        </button>
-                                        <input type="number" id="quantity_<?php echo $ticketType['id']; ?>"
-                                            name="quantity_<?php echo $ticketType['id']; ?>" value="0" min="0"
-                                            max="<?php echo min(10, $ticketType['available_tickets']); ?>"
-                                            class="quantity-input w-16 text-center py-1 border-t border-b border-gray-300 focus:outline-none focus:border-indigo-500"
-                                            data-price="<?php echo $ticketType['price']; ?>"
-                                            data-ticket-id="<?php echo $ticketType['id']; ?>">
-                                        <button type="button"
-                                            class="increase-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-r"
-                                            data-ticket-id="<?php echo $ticketType['id']; ?>">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Subtotal for this ticket type -->
-                                <div class="mt-3 text-right">
-                                    <span class="text-sm text-gray-600">Subtotal: </span>
-                                    <span class="font-semibold text-gray-900 subtotal"
-                                        data-ticket-id="<?php echo $ticketType['id']; ?>">
-                                        <?php echo formatCurrency(0); ?>
-                                    </span>
-                                </div>
-                                <?php else: ?>
-                                <div class="bg-gray-100 text-gray-600 text-center py-2 rounded">
-                                    Sold Out
-                                </div>
-                                <?php endif; ?>
-
-                                <!-- Availability indicator -->
-                                <?php if ($ticketType['available_tickets'] <= 10 && $ticketType['available_tickets'] > 0): ?>
-                                <div class="mt-2 text-center">
-                                    <span
-                                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                                        Only <?php echo $ticketType['available_tickets']; ?> left!
-                                    </span>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                            <?php endforeach; ?>
+    <form method="POST" action="" id="ticket-form">
+        <div class="space-y-6">
+            <?php foreach ($ticketTypes as $index => $ticketType): ?>
+            <div class="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition duration-300">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex-1">
+                        <h3 class="font-bold text-lg text-gray-900">
+                            <?php echo htmlspecialchars($ticketType['name']); ?>
+                        </h3>
+                        <?php if (!empty($ticketType['description'])): ?>
+                        <p class="text-sm text-gray-600 mt-1">
+                            <?php echo htmlspecialchars($ticketType['description']); ?>
+                        </p>
+                        <?php endif; ?>
+                        <div class="mt-2">
+                            <span class="text-sm text-gray-500">
+                                <?php echo number_format($ticketType['available_tickets']); ?> of
+                                <?php echo number_format($ticketType['total_tickets'] ?? $ticketType['available_tickets']); ?>
+                                available
+                            </span>
                         </div>
-
-                        <!-- Order Summary -->
-                        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-                            <h4 class="font-semibold text-gray-900 mb-3">Order Summary</h4>
-                            <div id="order-summary" class="space-y-2 text-sm">
-                                <div class="text-gray-500 text-center py-2">No tickets selected</div>
-                            </div>
-                            <div class="border-t border-gray-300 mt-3 pt-3">
-                                <div class="flex justify-between items-center">
-                                    <span class="font-bold text-lg">Total:</span>
-                                    <span id="total-price"
-                                        class="font-bold text-xl text-indigo-600"><?php echo formatCurrency(0); ?></span>
-                                </div>
-                            </div>
+                        
+                        <!-- Show special message for ongoing events -->
+                        <?php if ($eventStatus === 'ongoing'): ?>
+                        <div class="mt-2">
+                            <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                                <i class="fas fa-bolt mr-1"></i>Instant Entry Available
+                            </span>
                         </div>
-
-                        <input type="hidden" name="add_to_cart" value="1">
-
-                        <div class="mt-6">
-                            <?php if (isLoggedIn()): ?>
-                            <button type="submit" id="add-to-cart-btn"
-                                class="w-full bg-gray-400 text-white font-bold py-3 px-4 rounded transition duration-300 cursor-not-allowed"
-                                disabled>
-                                <i class="fas fa-shopping-cart mr-2"></i> Add to Cart
-                            </button>
-                            <?php else: ?>
-                            <button type="button"
-                                class="w-full bg-gray-400 text-white font-bold py-3 px-4 rounded cursor-not-allowed">
-                                <i class="fas fa-lock mr-2"></i> Login Required
-                            </button>
-                            <p class="text-center mt-3 text-sm text-gray-600">
-                                <a href="login.php?redirect=event-details.php?id=<?php echo $eventId; ?>"
-                                    class="text-indigo-600 hover:text-indigo-800">
-                                    Login</a> or <a href="register.php"
-                                    class="text-indigo-600 hover:text-indigo-800">Register</a> to purchase tickets
-                            </p>
-                            <?php endif; ?>
-                        </div>
-                    </form>
-
-                    <div class="mt-4 text-sm text-gray-600 space-y-1">
-                        <p><i class="fas fa-info-circle mr-1"></i> Maximum 10 tickets per type</p>
-                        <p><i class="fas fa-shield-alt mr-1"></i> Secure checkout</p>
-                        <p><i class="fas fa-ticket-alt mr-1"></i> Digital tickets via email</p>
+                        <?php endif; ?>
                     </div>
-                    <?php endif; ?>
+                    <div class="text-right ml-4">
+                        <div class="text-2xl font-bold text-indigo-600">
+                            <?php echo formatCurrency($ticketType['price']); ?>
+                        </div>
+                        <?php if ($eventStatus === 'ongoing'): ?>
+                        <div class="text-xs text-red-600 font-medium">
+                            Join Now!
+                        </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
+
+                <?php if ($ticketType['available_tickets'] > 0): ?>
+                <div class="flex items-center justify-between">
+                    <label for="quantity_<?php echo $ticketType['id']; ?>"
+                        class="text-sm font-medium text-gray-700">
+                        Quantity:
+                    </label>
+                    <div class="flex items-center">
+                        <button type="button"
+                            class="decrease-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-l"
+                            data-ticket-id="<?php echo $ticketType['id']; ?>">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" id="quantity_<?php echo $ticketType['id']; ?>"
+                            name="quantity_<?php echo $ticketType['id']; ?>" value="0" min="0"
+                            max="<?php echo min(10, $ticketType['available_tickets']); ?>"
+                            class="quantity-input w-16 text-center py-1 border-t border-b border-gray-300 focus:outline-none focus:border-indigo-500"
+                            data-price="<?php echo $ticketType['price']; ?>"
+                            data-ticket-id="<?php echo $ticketType['id']; ?>">
+                        <button type="button"
+                            class="increase-btn bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-r"
+                            data-ticket-id="<?php echo $ticketType['id']; ?>">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Subtotal for this ticket type -->
+                <div class="mt-3 text-right">
+                    <span class="text-sm text-gray-600">Subtotal: </span>
+                    <span class="font-semibold text-gray-900 subtotal"
+                        data-ticket-id="<?php echo $ticketType['id']; ?>">
+                        <?php echo formatCurrency(0); ?>
+                    </span>
+                </div>
+                <?php else: ?>
+                <div class="bg-gray-100 text-gray-600 text-center py-2 rounded">
+                    Sold Out
+                </div>
+                <?php endif; ?>
+
+                <!-- Availability indicator -->
+                <?php if ($ticketType['available_tickets'] <= 10 && $ticketType['available_tickets'] > 0): ?>
+                <div class="mt-2 text-center">
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        Only <?php echo $ticketType['available_tickets']; ?> left!
+                    </span>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Order Summary -->
+        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h4 class="font-semibold text-gray-900 mb-3">Order Summary</h4>
+            <div id="order-summary" class="space-y-2 text-sm">
+                <div class="text-gray-500 text-center py-2">No tickets selected</div>
+            </div>
+            <div class="border-t border-gray-300 mt-3 pt-3">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-lg">Total:</span>
+                    <span id="total-price" class="font-bold text-xl text-indigo-600"><?php echo formatCurrency(0); ?></span>
+                </div>
+            </div>
+        </div>
+
+        <input type="hidden" name="add_to_cart" value="1">
+
+        <div class="mt-6">
+            <?php if (isLoggedIn()): ?>
+            <button type="submit" id="add-to-cart-btn"
+                class="w-full bg-gray-400 text-white font-bold py-3 px-4 rounded transition duration-300 cursor-not-allowed"
+                disabled>
+                <i class="fas fa-shopping-cart mr-2"></i>
+                <?php echo $eventStatus === 'ongoing' ? 'Get Tickets & Join Now' : 'Add to Cart'; ?>
+            </button>
+            <?php else: ?>
+            <button type="button"
+                class="w-full bg-gray-400 text-white font-bold py-3 px-4 rounded cursor-not-allowed">
+                <i class="fas fa-lock mr-2"></i> Login Required
+            </button>
+            <p class="text-center mt-3 text-sm text-gray-600">
+                <a href="login.php?redirect=event-details.php?id=<?php echo $eventId; ?>"
+                    class="text-indigo-600 hover:text-indigo-800">
+                    Login</a> or <a href="register.php"
+                    class="text-indigo-600 hover:text-indigo-800">Register</a> to purchase tickets
+            </p>
+            <?php endif; ?>
+        </div>
+    </form>
+
+    <div class="mt-4 text-sm text-gray-600 space-y-1">
+        <p><i class="fas fa-info-circle mr-1"></i> Maximum 10 tickets per type</p>
+        <p><i class="fas fa-shield-alt mr-1"></i> Secure checkout</p>
+        <p><i class="fas fa-ticket-alt mr-1"></i> Digital tickets via email</p>
+        <?php if ($eventStatus === 'ongoing'): ?>
+        <p><i class="fas fa-bolt mr-1 text-red-500"></i> <span class="text-red-600 font-medium">Instant access - Join the event immediately after purchase!</span></p>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+</div>
+
             </div>
         </div>
     </div>

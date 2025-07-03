@@ -125,21 +125,38 @@
                         </div>
                         <?php endif; ?>
                     </td>
-                    <td class="py-4 px-4 border-b border-gray-200">
-                        <?php
-                                $statusClasses = [
-                                    'active' => 'bg-green-100 text-green-800',
-                                    'completed' => 'bg-blue-100 text-blue-800',
-                                    'canceled' => 'bg-red-100 text-red-800',
-                                    'suspended' => 'bg-yellow-100 text-yellow-800'
-                                ];
-                                $statusClass = $statusClasses[$event['status']] ?? 'bg-gray-100 text-gray-800';
-                                ?>
-                        <span
-                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusClass; ?>">
-                            <?php echo ucfirst($event['status']); ?>
-                        </span>
-                    </td>
+                   
+<td class="py-4 px-4 border-b border-gray-200">
+    <?php
+    // Calculate actual status based on date
+    $currentDateTime = new DateTime();
+    $eventDateTime = new DateTime($event['start_date'] . ' ' . ($event['start_time'] ?? '00:00:00'));
+    
+    // Determine actual status
+    $actualStatus = $event['status'];
+    if ($event['status'] === 'active' && $eventDateTime < $currentDateTime) {
+        $actualStatus = 'completed';
+    } elseif ($event['status'] === 'active' && $eventDateTime >= $currentDateTime) {
+        $actualStatus = 'active';
+    }
+    
+    $statusClasses = [
+        'active' => 'bg-green-100 text-green-800',
+        'completed' => 'bg-blue-100 text-blue-800',
+        'canceled' => 'bg-red-100 text-red-800',
+        'suspended' => 'bg-yellow-100 text-yellow-800',
+        'expired' => 'bg-gray-100 text-gray-800'
+    ];
+    $statusClass = $statusClasses[$actualStatus] ?? 'bg-gray-100 text-gray-800';
+    ?>
+    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusClass; ?>">
+        <?php echo ucfirst($actualStatus); ?>
+        <?php if ($actualStatus !== $event['status']): ?>
+            <span class="ml-1 text-xs opacity-75">(Auto)</span>
+        <?php endif; ?>
+    </span>
+</td>
+
                     <td class="py-4 px-4 border-b border-gray-200 text-sm">
                         <a href="?action=edit&id=<?php echo $event['id']; ?>"
                             class="text-indigo-600 hover:text-indigo-900 mr-3">
