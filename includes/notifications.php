@@ -18,16 +18,17 @@ use AfricasTalking\SDK\AfricasTalking;
  * @param array $attachments Optional array of attachments [path => name]
  * @return bool True if email sent successfully, false otherwise
  */
-function sendEmail($to, $subject, $body, $plainText = '', $attachments = []) {
+function sendEmail($to, $subject, $body, $plainText = '', $attachments = [])
+{
     global $db;
-    
+
     // Log the email attempt
     $sql = "INSERT INTO email_logs (recipient_email, subject, message, status) 
             VALUES ('" . $db->escape($to) . "', '" . $db->escape($subject) . "', 
             '" . $db->escape($body) . "', 'pending')";
-    
+
     $emailLogId = $db->insert($sql);
-    
+
     $mail = new PHPMailer(true);
     try {
         // Server settings
@@ -38,41 +39,41 @@ function sendEmail($to, $subject, $body, $plainText = '', $attachments = []) {
         $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = SMTP_ENCRYPTION;
         $mail->Port = SMTP_PORT;
-        
+
         // Recipients
         $mail->setFrom(SMTP_FROM_EMAIL, SITE_NAME);
         $mail->addAddress($to);
-        
+
         // Content
         $mail->isHTML(true);
         $mail->Subject = $subject;
         $mail->Body = $body;
-        
+
         // Add plain text alternative if provided
         if (!empty($plainText)) {
             $mail->AltBody = $plainText;
         }
-        
+
         // Add attachments if any
         if (!empty($attachments)) {
             foreach ($attachments as $path => $name) {
                 $mail->addAttachment($path, $name);
             }
         }
-        
+
         $mail->send();
-        
+
         // Update email log status
         $db->query("UPDATE email_logs SET status = 'sent' WHERE id = $emailLogId");
-        
+
         return true;
     } catch (Exception $e) {
         // Log error
         error_log("Email could not be sent. Mailer Error: {$mail->ErrorInfo}");
-        
+
         // Update email log status
         $db->query("UPDATE email_logs SET status = 'failed' WHERE id = $emailLogId");
-        
+
         return false;
     }
 }
@@ -84,43 +85,44 @@ function sendEmail($to, $subject, $body, $plainText = '', $attachments = []) {
  * @param string $message SMS message
  * @return bool True if SMS sent successfully, false otherwise
  */
-function sendSMS($phoneNumber, $message) {
+function sendSMS($phoneNumber, $message)
+{
     global $db;
-    
+
     // Log the SMS attempt
     $sql = "INSERT INTO sms_logs (recipient_phone, message, status) 
             VALUES ('" . $db->escape($phoneNumber) . "', '" . $db->escape($message) . "', 'pending')";
-    
+
     $smsLogId = $db->insert($sql);
-    
+
     // Format phone number (ensure it has country code)
     if (!preg_match('/^\+/', $phoneNumber)) {
         // Add country code if not present (adjust as needed for your region)
         $phoneNumber = '+' . ltrim($phoneNumber, '+0');
     }
-    
+
     // Truncate message if longer than 160 characters
     if (strlen($message) > 160) {
         $message = substr($message, 0, 157) . '...';
     }
-    
+
     // AfricasTalking credentials
     $username = SMS_USERNAME;
     $apiKey = SMS_API_KEY;
-    
+
     // Initialize the SDK
     $AT = new AfricasTalking($username, $apiKey);
-    
+
     // Get the SMS service
     $sms = $AT->sms();
-    
+
     try {
         // Send the message
         $result = $sms->send([
             'to' => $phoneNumber,
             'message' => $message
         ]);
-        
+
         // Check if the message was sent successfully
         if ($result['status'] == 'success' && !empty($result['data']->SMSMessageData->Recipients)) {
             $recipient = $result['data']->SMSMessageData->Recipients[0];
@@ -130,21 +132,21 @@ function sendSMS($phoneNumber, $message) {
                 return true;
             }
         }
-        
+
         // Log error
         error_log("SMS could not be sent. Status: " . json_encode($result));
-        
+
         // Update SMS log status
         $db->query("UPDATE sms_logs SET status = 'failed' WHERE id = $smsLogId");
-        
+
         return false;
     } catch (Exception $e) {
         // Log error
         error_log("SMS could not be sent. Error: " . $e->getMessage());
-        
+
         // Update SMS log status
         $db->query("UPDATE sms_logs SET status = 'failed' WHERE id = $smsLogId");
-        
+
         return false;
     }
 }
@@ -157,11 +159,12 @@ function sendSMS($phoneNumber, $message) {
  * @param string $qrCodeUrl URL to the QR code image
  * @return string HTML email template
  */
-function getTicketEmailTemplate($ticket, $event, $qrCodeUrl) {
+function getTicketEmailTemplate($ticket, $event, $qrCodeUrl)
+{
     $eventDate = formatDate($event['start_date']);
     $eventTime = formatTime($event['start_time']);
     $ticketPrice = formatCurrency($ticket['purchase_price']);
-    
+
     return <<<HTML
 <!DOCTYPE html>
 <html>
@@ -270,17 +273,18 @@ HTML;
  * @param array $event Event information
  * @return string SMS message
  */
-function getTicketSMSTemplate($ticket, $event) {
+function getTicketSMSTemplate($ticket, $event)
+{
     $eventDate = formatDate($event['start_date']);
     $eventTime = formatTime($event['start_time']);
-    
+
     $message = "Your ticket for {$event['title']} is confirmed!\n";
     $message .= "Date: {$eventDate}\n";
     $message .= "Time: {$eventTime}\n";
     $message .= "Venue: {$event['venue']}\n";
     $message .= "Ticket ID: {$ticket['id']}\n";
     $message .= "View your ticket at: " . SITE_URL . "/view-ticket.php?id={$ticket['id']}";
-    
+
     return $message;
 }
 
@@ -291,7 +295,8 @@ function getTicketSMSTemplate($ticket, $event) {
 /**
  * Get enhanced ticket email template
  */
-function getEnhancedTicketEmailTemplate($ticket, $eventDetails, $qrCodeUrl) {
+function getEnhancedTicketEmailTemplate($ticket, $eventDetails, $qrCodeUrl)
+{
     $html = '
     <!DOCTYPE html>
     <html lang="en">
@@ -369,8 +374,8 @@ function getEnhancedTicketEmailTemplate($ticket, $eventDetails, $qrCodeUrl) {
                             ' . formatDate($eventDetails['start_date']) . '
                         </div>
                         <div>
-                            <strong>🕐 Time:</strong><br>
-                            ' . formatTime($eventDetails['start_time']) . ' - ' . formatTime($eventDetails['end_time']) . '
+                            <strong>\ud83d\udd50 Time:</strong><br>
+                            ' . formatTime($eventDetails['start_time']) . ' - ' . formatTime($eventDetails['end_time'] ?? "") . '
                         </div>
                         <div style="grid-column: span 2;">
                             <strong>📍 Location:</strong><br>
@@ -414,14 +419,15 @@ function getEnhancedTicketEmailTemplate($ticket, $eventDetails, $qrCodeUrl) {
         </div>
     </body>
     </html>';
-    
+
     return $html;
 }
 
 /**
  * Get enhanced SMS template for tickets
  */
-function getEnhancedTicketSMSTemplate($ticket, $eventDetails) {
+function getEnhancedTicketSMSTemplate($ticket, $eventDetails)
+{
     $message = "🎫 TICKET CONFIRMED!\n\n";
     $message .= "Event: " . $eventDetails['title'] . "\n";
     $message .= "Date: " . formatDate($eventDetails['start_date']) . "\n";
@@ -432,21 +438,22 @@ function getEnhancedTicketSMSTemplate($ticket, $eventDetails) {
     $message .= "Arrive 30 mins early with valid ID.\n\n";
     $message .= "View tickets: " . SITE_URL . "/customer/tickets.php\n";
     $message .= "Support: +250 123 456 789";
-    
+
     return $message;
 }
 
 /**
  * Send enhanced email with better error handling
  */
-function sendEnhancedEmail($to, $subject, $htmlBody, $plainTextBody = '') {
+function sendEnhancedEmail($to, $subject, $htmlBody, $plainTextBody = '')
+{
     global $db;
-    
+
     // Log email attempt
     $logSql = "INSERT INTO email_logs (recipient_email, subject, message, status, created_at) 
                VALUES ('" . $db->escape($to) . "', '" . $db->escape($subject) . "', '" . $db->escape($htmlBody) . "', 'pending', NOW())";
     $emailLogId = $db->insert($logSql);
-    
+
     try {
         // Set up email headers
         $headers = [
@@ -458,12 +465,12 @@ function sendEnhancedEmail($to, $subject, $htmlBody, $plainTextBody = '') {
             'X-Priority: 1',
             'Importance: High'
         ];
-        
+
         // Add plain text alternative if provided
         if (!empty($plainTextBody)) {
             $boundary = md5(time());
             $headers[1] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
-            
+
             $body = "--$boundary\r\n";
             $body .= "Content-Type: text/plain; charset=UTF-8\r\n";
             $body .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
@@ -473,13 +480,13 @@ function sendEnhancedEmail($to, $subject, $htmlBody, $plainTextBody = '') {
             $body .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
             $body .= $htmlBody . "\r\n\r\n";
             $body .= "--$boundary--";
-            
+
             $htmlBody = $body;
         }
-        
+
         // Send email
         $result = mail($to, $subject, $htmlBody, implode("\r\n", $headers));
-        
+
         if ($result) {
             // Update log status
             $db->query("UPDATE email_logs SET status = 'sent' WHERE id = $emailLogId");
@@ -490,7 +497,7 @@ function sendEnhancedEmail($to, $subject, $htmlBody, $plainTextBody = '') {
             error_log("Failed to send email to: $to");
             return false;
         }
-        
+
     } catch (Exception $e) {
         // Update log status
         $db->query("UPDATE email_logs SET status = 'failed' WHERE id = $emailLogId");
@@ -502,25 +509,26 @@ function sendEnhancedEmail($to, $subject, $htmlBody, $plainTextBody = '') {
 /**
  * Send enhanced SMS with better formatting
  */
-function sendEnhancedSMS($phoneNumber, $message) {
+function sendEnhancedSMS($phoneNumber, $message)
+{
     global $db;
-    
+
     // Clean phone number
     $cleanPhone = preg_replace('/[^0-9+]/', '', $phoneNumber);
-    
+
     // Log SMS attempt
     $logSql = "INSERT INTO sms_logs (recipient_phone, message, status, created_at) 
                VALUES ('" . $db->escape($cleanPhone) . "', '" . $db->escape($message) . "', 'pending', NOW())";
     $smsLogId = $db->insert($logSql);
-    
+
     try {
         // For demo purposes, we'll simulate SMS sending        
         // Simulate API call delay
         usleep(500000); // 0.5 second delay
-        
+
         // Simulate success/failure (90% success rate for demo)
         $success = (rand(1, 10) <= 9);
-        
+
         if ($success) {
             $db->query("UPDATE sms_logs SET status = 'sent' WHERE id = $smsLogId");
             return true;
@@ -529,7 +537,7 @@ function sendEnhancedSMS($phoneNumber, $message) {
             error_log("SMS simulation failed for: $cleanPhone");
             return false;
         }
-        
+
     } catch (Exception $e) {
         $db->query("UPDATE sms_logs SET status = 'failed' WHERE id = $smsLogId");
         error_log("SMS sending error: " . $e->getMessage());
@@ -540,9 +548,10 @@ function sendEnhancedSMS($phoneNumber, $message) {
 /**
  * Send event reminder notifications
  */
-function sendEventReminders() {
+function sendEventReminders()
+{
     global $db;
-    
+
     // Get events starting in 24 hours
     $sql = "SELECT DISTINCT e.*, t.user_id, t.recipient_email, t.recipient_name, u.phone_number
             FROM events e
@@ -551,17 +560,17 @@ function sendEventReminders() {
             WHERE e.start_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
             AND t.status = 'sold'
             AND e.status = 'active'";
-    
+
     $reminders = $db->fetchAll($sql);
-    
+
     foreach ($reminders as $reminder) {
         // Send email reminder
         $subject = "Reminder: " . $reminder['title'] . " is tomorrow!";
         $htmlBody = getEventReminderEmailTemplate($reminder);
         $plainText = "Don't forget! " . $reminder['title'] . " is tomorrow at " . formatTime($reminder['start_time']) . " at " . $reminder['venue'] . ".";
-        
+
         sendEnhancedEmail($reminder['recipient_email'], $subject, $htmlBody, $plainText);
-        
+
         // Send SMS reminder if phone number available
         if (!empty($reminder['phone_number'])) {
             $smsMessage = "Reminder: " . $reminder['title'] . " is TOMORROW at " . formatTime($reminder['start_time']) . " at " . $reminder['venue'] . ". Don't forget your ticket!";
@@ -573,7 +582,8 @@ function sendEventReminders() {
 /**
  * Get event reminder email template
  */
-function getEventReminderEmailTemplate($eventDetails) {
+function getEventReminderEmailTemplate($eventDetails)
+{
     $html = '
     <!DOCTYPE html>
     <html lang="en">
@@ -628,18 +638,19 @@ function getEventReminderEmailTemplate($eventDetails) {
         </div>
     </body>
     </html>';
-    
+
     return $html;
 }
 
 /**
  * Create notification in database
  */
-function createNotification($userId, $title, $message, $type = 'system') {
+function createNotification($userId, $title, $message, $type = 'system')
+{
     global $db;
-    
+
     $sql = "INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
             VALUES ($userId, '" . $db->escape($title) . "', '" . $db->escape($message) . "', '$type', 0, NOW())";
-    
+
     return $db->insert($sql);
 }

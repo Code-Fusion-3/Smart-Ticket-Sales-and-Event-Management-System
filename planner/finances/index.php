@@ -69,7 +69,7 @@ include '../../includes/planner_header.php';
 
 <div class="container mx-auto px-4 py-6">
     <h1 class="text-3xl font-bold mb-6">Financial Dashboard</h1>
-    
+
     <!-- Balance and Quick Actions -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div class="bg-white rounded-lg shadow-md overflow-hidden col-span-2">
@@ -83,56 +83,61 @@ include '../../includes/planner_header.php';
                         <p class="text-4xl font-bold text-indigo-600"><?php echo formatCurrency($balance); ?></p>
                     </div>
                     <div class="flex space-x-2">
-                        <a href="withdraw.php" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                        <a href="withdraw.php"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
                             <i class="fas fa-money-bill-wave mr-2"></i> Withdraw Funds
                         </a>
                     </div>
                 </div>
-                
+
                 <?php if (!empty($pendingWithdrawals)): ?>
-                    <div class="mt-4 pt-4 border-t">
-                        <h3 class="font-semibold text-gray-700 mb-2">Pending Withdrawals</h3>
-                        <div class="space-y-2">
-                            <?php foreach ($pendingWithdrawals as $withdrawal): ?>
-                                <div class="flex justify-between items-center bg-gray-50 p-3 rounded">
-                                    <div>
-                                        <p class="font-medium"><?php echo formatCurrency($withdrawal['amount']); ?></p>
-                                        <p class="text-sm text-gray-500">
-                                            Requested: <?php echo formatDate($withdrawal['created_at']); ?>
-                                        </p>
-                                    </div>
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                        <?php echo ucfirst($withdrawal['status']); ?>
-                                    </span>
-                                </div>
-                            <?php endforeach; ?>
+                <div class="mt-4 pt-4 border-t">
+                    <h3 class="font-semibold text-gray-700 mb-2">Pending Withdrawals</h3>
+                    <div class="space-y-2">
+                        <?php foreach ($pendingWithdrawals as $withdrawal): ?>
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded">
+                            <div>
+                                <p class="font-medium"><?php echo formatCurrency($withdrawal['amount']); ?></p>
+                                <p class="text-sm text-gray-500">
+                                    Requested: <?php echo formatDate($withdrawal['created_at']); ?>
+                                </p>
+                            </div>
+                            <span
+                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                <?php echo ucfirst($withdrawal['status']); ?>
+                            </span>
                         </div>
+                        <?php endforeach; ?>
                     </div>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
             <div class="bg-indigo-600 text-white px-6 py-4">
                 <h2 class="text-xl font-bold">Earnings Summary</h2>
             </div>
             <div class="p-6">
-            <div class="space-y-4">
+                <div class="space-y-4">
                     <div>
                         <p class="text-gray-500 text-sm">Total Sales</p>
-                        <p class="text-2xl font-bold text-green-600"><?php echo formatCurrency($earningsSummary['total_sales'] ?? 0); ?></p>
+                        <p class="text-2xl font-bold text-green-600">
+                            <?php echo formatCurrency($earningsSummary['total_sales'] ?? 0); ?></p>
                     </div>
-                    
+
                     <div>
                         <p class="text-gray-500 text-sm">Total Fees</p>
-                        <p class="text-2xl font-bold text-red-600"><?php echo formatCurrency($earningsSummary['total_fees'] ?? 0); ?></p>
+                        <p class="text-2xl font-bold text-red-600">
+                            <?php echo formatCurrency($earningsSummary['total_fees'] ?? 0); ?></p>
                     </div>
-                    
+
                     <div>
                         <p class="text-gray-500 text-sm">Total Withdrawals</p>
-                        <p class="text-2xl font-bold text-blue-600"><?php echo formatCurrency($earningsSummary['total_withdrawals'] ?? 0); ?></p>
+                        <p class="text-2xl font-bold text-blue-600">
+                            <?php echo formatCurrency($earningsSummary['total_withdrawals'] ?? 0); ?></p>
                     </div>
-                    
+
                     <div class="pt-4 border-t">
                         <p class="text-gray-500 text-sm">Net Earnings</p>
                         <p class="text-2xl font-bold text-indigo-600">
@@ -143,7 +148,7 @@ include '../../includes/planner_header.php';
             </div>
         </div>
     </div>
-    
+
     <!-- Monthly Earnings Chart -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
         <div class="bg-indigo-600 text-white px-6 py-4">
@@ -153,7 +158,7 @@ include '../../includes/planner_header.php';
             <canvas id="earningsChart" height="300"></canvas>
         </div>
     </div>
-    
+
     <!-- Recent Transactions -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
@@ -164,27 +169,37 @@ include '../../includes/planner_header.php';
         </div>
         <div class="p-6">
             <?php if (empty($recentTransactions)): ?>
-                <p class="text-gray-500 text-center py-4">No transactions found.</p>
+            <p class="text-gray-500 text-center py-4">No transactions found.</p>
             <?php else: ?>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <?php foreach ($recentTransactions as $transaction): ?>
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <?php echo formatDate($transaction['created_at']); ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        <?php 
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th
+                                class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date</th>
+                            <th
+                                class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Description</th>
+                            <th
+                                class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type</th>
+                            <th
+                                class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Amount</th>
+                            <th
+                                class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php foreach ($recentTransactions as $transaction): ?>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <?php echo formatDate($transaction['created_at']); ?>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <?php 
                                         if (!empty($transaction['description'])) {
                                             echo htmlspecialchars($transaction['description']);
                                         } elseif ($transaction['type'] == 'sale' && !empty($transaction['event_title'])) {
@@ -197,9 +212,9 @@ include '../../includes/planner_header.php';
                                             echo ucfirst($transaction['type']);
                                         }
                                         ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <?php 
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <?php 
                                         $typeClasses = [
                                             'sale' => 'bg-green-100 text-green-800',
                                             'withdrawal' => 'bg-blue-100 text-blue-800',
@@ -210,19 +225,21 @@ include '../../includes/planner_header.php';
                                         ];
                                         $typeClass = $typeClasses[$transaction['type']] ?? 'bg-gray-100 text-gray-800';
                                         ?>
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $typeClass; ?>">
-                                            <?php echo ucfirst(str_replace('_', ' ', $transaction['type'])); ?>
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <?php if (in_array($transaction['type'], ['sale', 'deposit'])): ?>
-                                            <span class="text-green-600">+<?php echo formatCurrency($transaction['amount']); ?></span>
-                                        <?php else: ?>
-                                            <span class="text-red-600">-<?php echo formatCurrency($transaction['amount']); ?></span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <?php 
+                                <span
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $typeClass; ?>">
+                                    <?php echo ucfirst(str_replace('_', ' ', $transaction['type'])); ?>
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <?php if (in_array($transaction['type'], ['sale', 'deposit'])): ?>
+                                <span
+                                    class="text-green-600">+<?php echo formatCurrency($transaction['amount']); ?></span>
+                                <?php else: ?>
+                                <span class="text-red-600">-<?php echo formatCurrency($transaction['amount']); ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <?php 
                                         $statusClasses = [
                                             'pending' => 'bg-yellow-100 text-yellow-800',
                                             'completed' => 'bg-green-100 text-green-800',
@@ -230,15 +247,16 @@ include '../../includes/planner_header.php';
                                         ];
                                         $statusClass = $statusClasses[$transaction['status']] ?? 'bg-gray-100 text-gray-800';
                                         ?>
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusClass; ?>">
-                                            <?php echo ucfirst($transaction['status']); ?>
-                                        </span>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                                <span
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusClass; ?>">
+                                    <?php echo ucfirst($transaction['status']); ?>
+                                </span>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
             <?php endif; ?>
         </div>
     </div>
@@ -254,17 +272,15 @@ document.addEventListener('DOMContentLoaded', function() {
         type: 'bar',
         data: {
             labels: [
-                <?php foreach ($monthlyEarnings as $data): ?>
-                    '<?php echo $data['month']; ?>',
+                <?php foreach ($monthlyEarnings as $data): ?> '<?php echo $data['month']; ?>',
                 <?php endforeach; ?>
             ],
-            datasets: [
-                {
+            datasets: [{
                     label: 'Sales',
                     backgroundColor: 'rgba(79, 70, 229, 0.8)',
                     data: [
                         <?php foreach ($monthlyEarnings as $data): ?>
-                            <?php echo $data['sales']; ?>,
+                        <?php echo $data['sales']; ?>,
                         <?php endforeach; ?>
                     ]
                 },
@@ -273,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     backgroundColor: 'rgba(239, 68, 68, 0.8)',
                     data: [
                         <?php foreach ($monthlyEarnings as $data): ?>
-                            <?php echo $data['fees']; ?>,
+                        <?php echo $data['fees']; ?>,
                         <?php endforeach; ?>
                     ]
                 },
@@ -282,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     backgroundColor: 'rgba(16, 185, 129, 0.8)',
                     data: [
                         <?php foreach ($monthlyEarnings as $data): ?>
-                            <?php echo $data['net']; ?>,
+                        <?php echo $data['net']; ?>,
                         <?php endforeach; ?>
                     ]
                 }
@@ -305,4 +321,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php include '../../includes/footer.php'; ?>
+<?php  ?>

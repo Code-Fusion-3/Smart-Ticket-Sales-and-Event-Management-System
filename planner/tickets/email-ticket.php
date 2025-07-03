@@ -117,120 +117,123 @@ include '../../includes/planner_header.php';
             <h1 class="text-3xl font-bold mt-2">Email Ticket #<?php echo $ticketId; ?></h1>
         </div>
     </div>
-    
+
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="bg-indigo-600 text-white px-6 py-4">
             <h2 class="text-xl font-bold">Send Ticket by Email</h2>
         </div>
-        
+
         <div class="p-6">
             <?php if ($success): ?>
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                    <p>Ticket has been sent successfully to <?php echo htmlspecialchars($recipientEmail); ?>.</p>
-                </div>
-                
-                <div class="flex justify-center mt-4">
-                    <a href="tickets.php?action=view&id=<?php echo $ticketId; ?>" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
-                        Return to Ticket
-                    </a>
-                </div>
-            <?php else: ?>
-                <?php if (!empty($error)): ?>
-                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                        <p><?php echo $error; ?></p>
-                    </div>
-                <?php endif; ?>
-                
-                <form method="POST" action="">
-                    <div class="mb-4">
-                        <label for="email" class="block text-gray-700 font-bold mb-2">Recipient Email *</label>
-                        <input type="email" id="email" name="email" 
-                               value="<?php echo htmlspecialchars($_POST['email'] ?? ($ticket['recipient_email'] ?: $ticket['user_email'])); ?>" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                               required>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="subject" class="block text-gray-700 font-bold mb-2">Subject *</label>
-                        <input type="text" id="subject" name="subject" 
-                               value="<?php echo htmlspecialchars($_POST['subject'] ?? $defaultSubject); ?>" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                               required>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="message" class="block text-gray-700 font-bold mb-2">Message *</label>
-                        <textarea id="message" name="message" rows="10" 
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                  required><?php echo htmlspecialchars($_POST['message'] ?? $defaultMessage); ?></textarea>
-                    </div>
-                    
-                    <a href="tickets.php?action=view&id=<?php echo $ticketId; ?>" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-2">
-                            Cancel
-                        </a>
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
-                            Send Email
-                        </button>
-                    </div>
-                </form>
-            <?php endif; ?>
-        </div>
-    </div>
-    
-    <div class="bg-white rounded-lg shadow-md overflow-hidden mt-6">
-        <div class="bg-indigo-600 text-white px-6 py-4">
-            <h2 class="text-xl font-bold">Ticket Preview</h2>
-        </div>
-        
-        <div class="p-6">
-            <div class="border border-gray-300 rounded-lg p-4">
-                <div class="bg-gray-100 p-4 rounded-lg mb-4">
-                    <h3 class="text-xl font-bold"><?php echo htmlspecialchars($ticket['event_title']); ?></h3>
-                    <p class="text-gray-600">Ticket #<?php echo $ticketId; ?></p>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <p class="text-sm text-gray-500">Date</p>
-                        <p class="text-base font-medium"><?php echo formatDate($ticket['start_date']); ?></p>
-                    </div>
-                    
-                    <div>
-                        <p class="text-sm text-gray-500">Time</p>
-                        <p class="text-base font-medium"><?php echo formatTime($ticket['start_time']); ?></p>
-                    </div>
-                    
-                    <div>
-                        <p class="text-sm text-gray-500">Venue</p>
-                        <p class="text-base font-medium"><?php echo htmlspecialchars($ticket['venue']); ?></p>
-                    </div>
-                    
-                    <div>
-                        <p class="text-sm text-gray-500">Attendee</p>
-                        <p class="text-base font-medium"><?php echo htmlspecialchars($ticket['recipient_name'] ?: $ticket['username']); ?></p>
-                    </div>
-                </div>
-                
-                <div class="flex justify-center">
-                    <?php if (!empty($ticket['qr_code'])): ?>
-                        <img src="<?php echo SITE_URL . '/' . $ticket['qr_code']; ?>" alt="Ticket QR Code" class="h-32 w-32">
-                    <?php else: ?>
-                        <div class="h-32 w-32 bg-gray-200 flex items-center justify-center rounded">
-                            <i class="fas fa-qrcode text-gray-400 text-3xl"></i>
-                        </div>
-                    <?php endif; ?>
-                </div>
-                
-                <p class="text-center text-sm text-gray-500 mt-2">
-                    This QR code will be included in the email for ticket verification.
-                </p>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                <p>Ticket has been sent successfully to <?php echo htmlspecialchars($recipientEmail); ?>.</p>
             </div>
-            
-            <p class="text-sm text-gray-500 mt-4">
-                Note: The recipient will receive a link to view and print the full ticket.
-            </p>
+
+            <div class="flex justify-center mt-4">
+                <a href="tickets.php?action=view&id=<?php echo $ticketId; ?>"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    Return to Ticket
+                </a>
+            </div>
+            <?php else: ?>
+            <?php if (!empty($error)): ?>
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <p><?php echo $error; ?></p>
+            </div>
+            <?php endif; ?>
+
+            <form method="POST" action="">
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 font-bold mb-2">Recipient Email *</label>
+                    <input type="email" id="email" name="email"
+                        value="<?php echo htmlspecialchars($_POST['email'] ?? ($ticket['recipient_email'] ?: $ticket['user_email'])); ?>"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                        required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="subject" class="block text-gray-700 font-bold mb-2">Subject *</label>
+                    <input type="text" id="subject" name="subject"
+                        value="<?php echo htmlspecialchars($_POST['subject'] ?? $defaultSubject); ?>"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                        required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="message" class="block text-gray-700 font-bold mb-2">Message *</label>
+                    <textarea id="message" name="message" rows="10"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                        required><?php echo htmlspecialchars($_POST['message'] ?? $defaultMessage); ?></textarea>
+                </div>
+
+                <a href="tickets.php?action=view&id=<?php echo $ticketId; ?>"
+                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-2">
+                    Cancel
+                </a>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    Send Email
+                </button>
         </div>
+        </form>
+        <?php endif; ?>
     </div>
 </div>
 
-<?php include '../../includes/footer.php'; ?>
+<div class="bg-white rounded-lg shadow-md overflow-hidden mt-6">
+    <div class="bg-indigo-600 text-white px-6 py-4">
+        <h2 class="text-xl font-bold">Ticket Preview</h2>
+    </div>
+
+    <div class="p-6">
+        <div class="border border-gray-300 rounded-lg p-4">
+            <div class="bg-gray-100 p-4 rounded-lg mb-4">
+                <h3 class="text-xl font-bold"><?php echo htmlspecialchars($ticket['event_title']); ?></h3>
+                <p class="text-gray-600">Ticket #<?php echo $ticketId; ?></p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <p class="text-sm text-gray-500">Date</p>
+                    <p class="text-base font-medium"><?php echo formatDate($ticket['start_date']); ?></p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-500">Time</p>
+                    <p class="text-base font-medium"><?php echo formatTime($ticket['start_time']); ?></p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-500">Venue</p>
+                    <p class="text-base font-medium"><?php echo htmlspecialchars($ticket['venue']); ?></p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-500">Attendee</p>
+                    <p class="text-base font-medium">
+                        <?php echo htmlspecialchars($ticket['recipient_name'] ?: $ticket['username']); ?></p>
+                </div>
+            </div>
+
+            <div class="flex justify-center">
+                <?php if (!empty($ticket['qr_code'])): ?>
+                <img src="<?php echo SITE_URL . '/' . $ticket['qr_code']; ?>" alt="Ticket QR Code" class="h-32 w-32">
+                <?php else: ?>
+                <div class="h-32 w-32 bg-gray-200 flex items-center justify-center rounded">
+                    <i class="fas fa-qrcode text-gray-400 text-3xl"></i>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <p class="text-center text-sm text-gray-500 mt-2">
+                This QR code will be included in the email for ticket verification.
+            </p>
+        </div>
+
+        <p class="text-sm text-gray-500 mt-4">
+            Note: The recipient will receive a link to view and print the full ticket.
+        </p>
+    </div>
+</div>
+</div>
+
+<?php  ?>
