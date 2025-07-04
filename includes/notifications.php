@@ -3,51 +3,71 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once 'config.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
 // For AfricasTalking SDK
 use AfricasTalking\SDK\AfricasTalking;
 
 /**
- * Send email using PHPMailer
- * 
- * @param string $to Recipient email address
- * @param string $subject Email subject
- * @param string $body Email body (HTML)
- * @param string $plainText Plain text version of email
- * @param array $attachments Optional array of attachments [path => name]
- * @return bool True if email sent successfully, false otherwise
+ * Send email using PHPMailer with better error handling
  */
 function sendEmail($to, $subject, $body, $plainText = '', $attachments = [])
 {
     global $db;
 
+    // Validate email address
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        error_log("Invalid email address: $to");
+        return false;
+    }
+
     // Log the email attempt
-    $sql = "INSERT INTO email_logs (recipient_email, subject, message, status) 
+    $sql = "INSERT INTO email_logs (recipient_email, subject, message, status, created_at) 
             VALUES ('" . $db->escape($to) . "', '" . $db->escape($subject) . "', 
-            '" . $db->escape($body) . "', 'pending')";
+            '" . $db->escape(substr($body, 0, 1000)) . "', 'pending', NOW())";
 
     $emailLogId = $db->insert($sql);
 
     $mail = new PHPMailer(true);
+
     try {
+        // Enable debug mode if configured
+        if (defined('EMAIL_DEBUG') && EMAIL_DEBUG) {
+            $mail->SMTPDebug = SMTP::DEBUG_SERVER;
+            $mail->Debugoutput = function ($str, $level) {
+                error_log("PHPMailer Debug: $str");
+            };
+        }
+
         // Server settings
         $mail->isSMTP();
         $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
         $mail->Username = SMTP_USERNAME;
         $mail->Password = SMTP_PASSWORD;
-        $mail->SMTPSecure = SMTP_ENCRYPTION;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = SMTP_PORT;
 
+        // Additional SMTP settings for Gmail
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            )
+        );
+
         // Recipients
-        $mail->setFrom(SMTP_FROM_EMAIL, SITE_NAME);
+        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME ?? SITE_NAME);
         $mail->addAddress($to);
+        $mail->addReplyTo(SMTP_FROM_EMAIL, SMTP_FROM_NAME ?? SITE_NAME);
 
         // Content
         $mail->isHTML(true);
         $mail->Subject = $subject;
         $mail->Body = $body;
+        $mail->CharSet = 'UTF-8';
 
         // Add plain text alternative if provided
         if (!empty($plainText)) {
@@ -57,49 +77,68 @@ function sendEmail($to, $subject, $body, $plainText = '', $attachments = [])
         // Add attachments if any
         if (!empty($attachments)) {
             foreach ($attachments as $path => $name) {
-                $mail->addAttachment($path, $name);
+                if (file_exists($path)) {
+                    $mail->addAttachment($path, $name);
+                }
             }
         }
 
-        $mail->send();
+        $result = $mail->send();
 
-        // Update email log status
-        $db->query("UPDATE email_logs SET status = 'sent' WHERE id = $emailLogId");
+        if ($result) {
+            // Update email log status
+            $db->query("UPDATE email_logs SET status = 'sent', sent_at = NOW() WHERE id = $emailLogId");
+            error_log("Email sent successfully to: $to");
+            return true;
+        } else {
+            throw new Exception("Mail send returned false");
+        }
 
-        return true;
     } catch (Exception $e) {
         // Log error
-        error_log("Email could not be sent. Mailer Error: {$mail->ErrorInfo}");
+        $errorMessage = "Email could not be sent. Mailer Error: {$mail->ErrorInfo}. Exception: {$e->getMessage()}";
+        error_log($errorMessage);
 
         // Update email log status
-        $db->query("UPDATE email_logs SET status = 'failed' WHERE id = $emailLogId");
+        $db->query("UPDATE email_logs SET status = 'failed', error_message = '" . $db->escape($errorMessage) . "' WHERE id = $emailLogId");
 
         return false;
     }
 }
 
 /**
- * Send SMS using AfricasTalking
- * 
- * @param string $phoneNumber Recipient phone number
- * @param string $message SMS message
- * @return bool True if SMS sent successfully, false otherwise
+ * Send SMS using AfricasTalking with better error handling
  */
 function sendSMS($phoneNumber, $message)
 {
     global $db;
 
+    // Clean and validate phone number - remove all non-digit characters except +
+    $cleanPhone = preg_replace('/[^0-9+]/', '', $phoneNumber);
+
+    // Remove any spaces, dashes, or other formatting
+    $cleanPhone = str_replace([' ', '-', '(', ')', '.'], '', $cleanPhone);
+
+    // Format phone number for Rwanda (+250)
+    if (preg_match('/^0[0-9]{8}$/', $cleanPhone)) {
+        // Convert 0XXXXXXXX to +250XXXXXXXX
+        $cleanPhone = '+250' . substr($cleanPhone, 1);
+    } elseif (preg_match('/^[0-9]{9}$/', $cleanPhone)) {
+        // Convert XXXXXXXXX to +250XXXXXXXXX
+        $cleanPhone = '+250' . $cleanPhone;
+    } elseif (preg_match('/^250[0-9]{9}$/', $cleanPhone)) {
+        // Convert 250XXXXXXXXX to +250XXXXXXXXX
+        $cleanPhone = '+' . $cleanPhone;
+    } elseif (!preg_match('/^\+250[0-9]{9}$/', $cleanPhone)) {
+        error_log("Invalid phone number format: $phoneNumber (cleaned: $cleanPhone)");
+        return false;
+    }
+
     // Log the SMS attempt
-    $sql = "INSERT INTO sms_logs (recipient_phone, message, status) 
-            VALUES ('" . $db->escape($phoneNumber) . "', '" . $db->escape($message) . "', 'pending')";
+    $sql = "INSERT INTO sms_logs (recipient_phone, message, status, created_at) 
+            VALUES ('" . $db->escape($cleanPhone) . "', '" . $db->escape($message) . "', 'pending', NOW())";
 
     $smsLogId = $db->insert($sql);
-
-    // Format phone number (ensure it has country code)
-    if (!preg_match('/^\+/', $phoneNumber)) {
-        // Add country code if not present (adjust as needed for your region)
-        $phoneNumber = '+' . ltrim($phoneNumber, '+0');
-    }
 
     // Truncate message if longer than 160 characters
     if (strlen($message) > 160) {
@@ -110,190 +149,53 @@ function sendSMS($phoneNumber, $message)
     $username = SMS_USERNAME;
     $apiKey = SMS_API_KEY;
 
-    // Initialize the SDK
-    $AT = new AfricasTalking($username, $apiKey);
-
-    // Get the SMS service
-    $sms = $AT->sms();
-
     try {
+        // Initialize the SDK
+        $AT = new AfricasTalking($username, $apiKey);
+
+        // Get the SMS service
+        $sms = $AT->sms();
+
         // Send the message
         $result = $sms->send([
-            'to' => $phoneNumber,
+            'to' => $cleanPhone,
             'message' => $message
         ]);
 
-        // Check if the message was sent successfully
-        if ($result['status'] == 'success' && !empty($result['data']->SMSMessageData->Recipients)) {
-            $recipient = $result['data']->SMSMessageData->Recipients[0];
-            if ($recipient->status == 'Success') {
-                // Update SMS log status
-                $db->query("UPDATE sms_logs SET status = 'sent' WHERE id = $smsLogId");
-                return true;
-            }
+        if (defined('SMS_DEBUG') && SMS_DEBUG) {
+            error_log("SMS API Response: " . json_encode($result));
         }
 
-        // Log error
-        error_log("SMS could not be sent. Status: " . json_encode($result));
+        // Check if the message was sent successfully
+        if (isset($result['status']) && $result['status'] == 'success' && !empty($result['data']->SMSMessageData->Recipients)) {
+            $recipient = $result['data']->SMSMessageData->Recipients[0];
+            if (isset($recipient->status) && $recipient->status == 'Success') {
+                // Update SMS log status
+                $db->query("UPDATE sms_logs SET status = 'sent', sent_at = NOW() WHERE id = $smsLogId");
+                error_log("SMS sent successfully to: $cleanPhone");
+                return true;
+            } else {
+                $errorMsg = isset($recipient->statusCode) ? "Status Code: {$recipient->statusCode}" : "Unknown error";
+                throw new Exception($errorMsg);
+            }
+        } else {
+            throw new Exception("Invalid API response: " . json_encode($result));
+        }
 
-        // Update SMS log status
-        $db->query("UPDATE sms_logs SET status = 'failed' WHERE id = $smsLogId");
-
-        return false;
     } catch (Exception $e) {
         // Log error
-        error_log("SMS could not be sent. Error: " . $e->getMessage());
+        $errorMessage = "SMS could not be sent. Error: " . $e->getMessage();
+        error_log($errorMessage);
 
         // Update SMS log status
-        $db->query("UPDATE sms_logs SET status = 'failed' WHERE id = $smsLogId");
+        $db->query("UPDATE sms_logs SET status = 'failed', error_message = '" . $db->escape($errorMessage) . "' WHERE id = $smsLogId");
 
         return false;
     }
 }
 
 /**
- * Generate ticket email template
- * 
- * @param array $ticket Ticket information
- * @param array $event Event information
- * @param string $qrCodeUrl URL to the QR code image
- * @return string HTML email template
- */
-function getTicketEmailTemplate($ticket, $event, $qrCodeUrl)
-{
-    $eventDate = formatDate($event['start_date']);
-    $eventTime = formatTime($event['start_time']);
-    $ticketPrice = formatCurrency($ticket['purchase_price']);
-
-    return <<<HTML
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Ticket for {$event['title']}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            background-color: #4f46e5;
-            padding: 20px;
-            color: white;
-            text-align: center;
-        }
-        .content {
-            padding: 20px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-        }
-        .ticket {
-            background-color: white;
-            padding: 15px;
-            border-left: 4px solid #4f46e5;
-            margin-bottom: 20px;
-        }
-        .qr-code {
-            text-align: center;
-            margin: 20px 0;
-        }
-        .qr-code img {
-            max-width: 200px;
-            height: auto;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 12px;
-            color: #666;
-        }
-        .button {
-            display: inline-block;
-            background-color: #4f46e5;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 4px;
-            margin-top: 15px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2>Your Ticket is Confirmed!</h2>
-        </div>
-        <div class="content">
-            <h3>Thank you for your purchase</h3>
-            <p>Your ticket for <strong>{$event['title']}</strong> has been confirmed. Please find your ticket details below:</p>
-            
-            <div class="ticket">
-                <h4>{$event['title']}</h4>
-                <p><strong>Date:</strong> {$eventDate}</p>
-                <p><strong>Time:</strong> {$eventTime}</p>
-                <p><strong>Venue:</strong> {$event['venue']}, {$event['city']}</p>
-                <p><strong>Ticket Holder:</strong> {$ticket['recipient_name']}</p>
-                <p><strong>Ticket Price:</strong> {$ticketPrice}</p>
-                <p><strong>Ticket ID:</strong> {$ticket['id']}</p>
-            </div>
-            
-            <div class="qr-code">
-                <img src="{$qrCodeUrl}" alt="Ticket QR Code">
-                <p>Scan this QR code at the venue for entry</p>
-            </div>
-            
-            <p>You can also view and download your ticket from your account dashboard.</p>
-            <div style="text-align: center;">
-                <a href="http://localhost/utb/smart_ticket_system//view-ticket.php?id={$ticket['id']}" class="button">View Ticket</a>
-            </div>
-        </div>
-        <div class="footer">
-            <p>This is an automated message from {SITE_NAME}.</p>
-            <p>If you have any questions, please contact our support team.</p>
-        </div>
-    </div>
-</body>
-</html>
-HTML;
-}
-
-/**
- * Generate SMS template for ticket confirmation
- * 
- * @param array $ticket Ticket information
- * @param array $event Event information
- * @return string SMS message
- */
-function getTicketSMSTemplate($ticket, $event)
-{
-    $eventDate = formatDate($event['start_date']);
-    $eventTime = formatTime($event['start_time']);
-
-    $message = "Your ticket for {$event['title']} is confirmed!\n";
-    $message .= "Date: {$eventDate}\n";
-    $message .= "Time: {$eventTime}\n";
-    $message .= "Venue: {$event['venue']}\n";
-    $message .= "Ticket ID: {$ticket['id']}\n";
-    $message .= "View your ticket at: " . SITE_URL . "/view-ticket.php?id={$ticket['id']}";
-
-    return $message;
-}
-
-/**
- * Enhanced notification functions for ticket system
- */
-
-/**
- * Get enhanced ticket email template
+ * Enhanced ticket email template with better formatting
  */
 function getEnhancedTicketEmailTemplate($ticket, $eventDetails, $qrCodeUrl)
 {
@@ -305,19 +207,23 @@ function getEnhancedTicketEmailTemplate($ticket, $eventDetails, $qrCodeUrl)
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Your Ticket - ' . htmlspecialchars($eventDetails['title']) . '</title>
         <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: white; padding: 30px; border: 1px solid #ddd; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; }
             .ticket-card { background: #f8f9fa; border: 2px dashed #6366f1; border-radius: 10px; padding: 20px; margin: 20px 0; }
             .qr-code { text-align: center; margin: 20px 0; }
+            .qr-code img { max-width: 200px; height: auto; border: 2px solid #ddd; border-radius: 8px; }
             .event-details { background: #e0e7ff; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .footer { background: #f1f5f9; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; }
-            .btn { display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+            .footer { background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+            .btn { display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
             .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
-            .info-item { padding: 10px; background: white; border-radius: 6px; }
-            .info-label { font-weight: bold; color: #6366f1; font-size: 12px; text-transform: uppercase; }
-            .info-value { font-size: 14px; margin-top: 5px; }
+            .info-item { padding: 10px; background: white; border-radius: 6px; border: 1px solid #e5e7eb; }
+            .info-label { font-weight: bold; color: #6366f1; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+            .info-value { font-size: 14px; }
+            .highlight { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0; }
+            .highlight h4 { color: #92400e; margin-top: 0; }
+            .highlight ul { color: #92400e; margin: 0; padding-left: 20px; }
         </style>
     </head>
     <body>
@@ -360,61 +266,49 @@ function getEnhancedTicketEmailTemplate($ticket, $eventDetails, $qrCodeUrl)
                     
                     <div class="qr-code">
                         <p><strong>Your Entry QR Code:</strong></p>
-                        <img src="' . $qrCodeUrl . '" alt="QR Code" style="max-width: 200px; height: auto;">
-                                               <p style="font-size: 12px; color: #666;">Show this QR code at the event entrance</p>
+                        <img src="' . $qrCodeUrl . '" alt="QR Code" />
+                        <p style="font-size: 12px; color: #666; margin-top: 10px;">Show this QR code at the event entrance</p>
                         <p style="font-size: 10px; color: #999;">Verification Code: ' . htmlspecialchars($ticket['qr_code']) . '</p>
                     </div>
                 </div>
                 
-                <div class="event-details">
+                               <div class="event-details">
                     <h3 style="color: #4338ca; margin-top: 0;">📍 Event Information</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div>
-                            <strong>📅 Date:</strong><br>
-                            ' . formatDate($eventDetails['start_date']) . '
-                        </div>
-                        <div>
-                            <strong>\ud83d\udd50 Time:</strong><br>
-                            ' . formatTime($eventDetails['start_time']) . ' - ' . formatTime($eventDetails['end_time'] ?? "") . '
-                        </div>
-                        <div style="grid-column: span 2;">
-                            <strong>📍 Location:</strong><br>
-                            ' . htmlspecialchars($eventDetails['venue']) . '<br>
-                            ' . htmlspecialchars($eventDetails['city']) . '
-                        </div>
-                    </div>
+                    <p><strong>Event:</strong> ' . htmlspecialchars($eventDetails['title']) . '</p>
+                    <p><strong>Date:</strong> ' . formatDate($eventDetails['start_date']) . '</p>
+                    <p><strong>Time:</strong> ' . formatTime($eventDetails['start_time']) . '</p>
+                    <p><strong>Venue:</strong> ' . htmlspecialchars($eventDetails['venue']) . ', ' . htmlspecialchars($eventDetails['city']) . '</p>
+                    <p><strong>Organizer:</strong> ' . htmlspecialchars($ticket['planner_name'] ?? 'Event Organizer') . '</p>
                 </div>
                 
-                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                    <h4 style="color: #92400e; margin-top: 0;">⚠️ Important Reminders</h4>
-                    <ul style="color: #92400e; margin: 0; padding-left: 20px;">
-                        <li>Arrive at least 30 minutes before the event starts</li>
-                        <li>Bring a valid ID for verification</li>
-                        <li>This ticket is non-transferable and non-refundable</li>
-                        <li>Screenshots of QR codes are accepted</li>
+                <div class="highlight">
+                    <h4>📋 Important Instructions</h4>
+                    <ul>
+                        <li>Arrive 30 minutes before the event starts</li>
+                        <li>Bring a valid ID that matches the ticket holder\'s name</li>
+                        <li>Show the QR code above at the entrance</li>
+                        <li>Keep this email or save the QR code to your phone</li>
+                        <li>Contact support if you have any issues</li>
                     </ul>
                 </div>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="' . SITE_URL . '/customer/tickets.php" class="btn">View My Tickets</a>
-                    <a href="' . SITE_URL . '/events.php" class="btn" style="background: #10b981;">Browse More Events</a>
+                    <a href="' . SITE_URL . '/view-ticket.php?id=' . $ticket['id'] . '" class="btn">View Full Ticket</a>
+                    <a href="' . SITE_URL . '/download-ticket.php?id=' . $ticket['id'] . '" class="btn">Download Ticket</a>
+                </div>
+                
+                <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h4 style="color: #374151; margin-top: 0;">Need Help?</h4>
+                    <p style="margin: 5px 0;"><strong>Website:</strong> <a href="' . SITE_URL . '">' . SITE_NAME . '</a></p>
+                    <p style="margin: 5px 0;"><strong>Email:</strong> ' . SMTP_FROM_EMAIL . '</p>
+                    <p style="margin: 5px 0;"><strong>Phone:</strong> +250 123 456 789</p>
                 </div>
             </div>
             
             <div class="footer">
-                <h4 style="color: #6366f1; margin-top: 0;">Need Help?</h4>
-                <p style="margin: 10px 0;">
-                    📧 Email: <a href="mailto:support@' . str_replace(['http://', 'https://'], '', SITE_URL) . '">support@' . str_replace(['http://', 'https://'], '', SITE_URL) . '</a><br>
-                    📞 Phone: +250 123 456 789<br>
-                    🌐 Website: <a href="' . SITE_URL . '">' . SITE_NAME . '</a>
-                </p>
-                
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #d1d5db;">
-                    <p style="font-size: 12px; color: #6b7280; margin: 0;">
-                        This email was sent to ' . htmlspecialchars($ticket['recipient_email']) . '<br>
-                        © ' . date('Y') . ' ' . SITE_NAME . '. All rights reserved.
-                    </p>
-                </div>
+                <p>&copy; ' . date('Y') . ' ' . SITE_NAME . '. All rights reserved.</p>
+                <p>This is an automated email. Please do not reply to this message.</p>
+                <p>If you did not purchase this ticket, please contact us immediately.</p>
             </div>
         </div>
     </body>
@@ -424,233 +318,196 @@ function getEnhancedTicketEmailTemplate($ticket, $eventDetails, $qrCodeUrl)
 }
 
 /**
- * Get enhanced SMS template for tickets
+ * Simple ticket email template for fallback
  */
-function getEnhancedTicketSMSTemplate($ticket, $eventDetails)
-{
-    $message = "🎫 TICKET CONFIRMED!\n\n";
-    $message .= "Event: " . $eventDetails['title'] . "\n";
-    $message .= "Date: " . formatDate($eventDetails['start_date']) . "\n";
-    $message .= "Time: " . formatTime($eventDetails['start_time']) . "\n";
-    $message .= "Venue: " . $eventDetails['venue'] . "\n";
-    $message .= "Ticket ID: #" . $ticket['id'] . "\n\n";
-    $message .= "Show your email QR code at entrance.\n";
-    $message .= "Arrive 30 mins early with valid ID.\n\n";
-    $message .= "View tickets: " . SITE_URL . "/customer/tickets.php\n";
-    $message .= "Support: +250 123 456 789";
-
-    return $message;
-}
-
-/**
- * Send enhanced email with better error handling
- */
-function sendEnhancedEmail($to, $subject, $htmlBody, $plainTextBody = '')
-{
-    global $db;
-
-    // Log email attempt
-    $logSql = "INSERT INTO email_logs (recipient_email, subject, message, status, created_at) 
-               VALUES ('" . $db->escape($to) . "', '" . $db->escape($subject) . "', '" . $db->escape($htmlBody) . "', 'pending', NOW())";
-    $emailLogId = $db->insert($logSql);
-
-    try {
-        // Set up email headers
-        $headers = [
-            'MIME-Version: 1.0',
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . SITE_NAME . ' <noreply@' . str_replace(['http://', 'https://'], '', SITE_URL) . '>',
-            'Reply-To: support@' . str_replace(['http://', 'https://'], '', SITE_URL),
-            'X-Mailer: PHP/' . phpversion(),
-            'X-Priority: 1',
-            'Importance: High'
-        ];
-
-        // Add plain text alternative if provided
-        if (!empty($plainTextBody)) {
-            $boundary = md5(time());
-            $headers[1] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
-
-            $body = "--$boundary\r\n";
-            $body .= "Content-Type: text/plain; charset=UTF-8\r\n";
-            $body .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-            $body .= $plainTextBody . "\r\n\r\n";
-            $body .= "--$boundary\r\n";
-            $body .= "Content-Type: text/html; charset=UTF-8\r\n";
-            $body .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-            $body .= $htmlBody . "\r\n\r\n";
-            $body .= "--$boundary--";
-
-            $htmlBody = $body;
-        }
-
-        // Send email
-        $result = mail($to, $subject, $htmlBody, implode("\r\n", $headers));
-
-        if ($result) {
-            // Update log status
-            $db->query("UPDATE email_logs SET status = 'sent' WHERE id = $emailLogId");
-            return true;
-        } else {
-            // Update log status
-            $db->query("UPDATE email_logs SET status = 'failed' WHERE id = $emailLogId");
-            error_log("Failed to send email to: $to");
-            return false;
-        }
-
-    } catch (Exception $e) {
-        // Update log status
-        $db->query("UPDATE email_logs SET status = 'failed' WHERE id = $emailLogId");
-        error_log("Email sending error: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Send enhanced SMS with better formatting
- */
-function sendEnhancedSMS($phoneNumber, $message)
-{
-    global $db;
-
-    // Clean phone number
-    $cleanPhone = preg_replace('/[^0-9+]/', '', $phoneNumber);
-
-    // Log SMS attempt
-    $logSql = "INSERT INTO sms_logs (recipient_phone, message, status, created_at) 
-               VALUES ('" . $db->escape($cleanPhone) . "', '" . $db->escape($message) . "', 'pending', NOW())";
-    $smsLogId = $db->insert($logSql);
-
-    try {
-        // For demo purposes, we'll simulate SMS sending        
-        // Simulate API call delay
-        usleep(500000); // 0.5 second delay
-
-        // Simulate success/failure (90% success rate for demo)
-        $success = (rand(1, 10) <= 9);
-
-        if ($success) {
-            $db->query("UPDATE sms_logs SET status = 'sent' WHERE id = $smsLogId");
-            return true;
-        } else {
-            $db->query("UPDATE sms_logs SET status = 'failed' WHERE id = $smsLogId");
-            error_log("SMS simulation failed for: $cleanPhone");
-            return false;
-        }
-
-    } catch (Exception $e) {
-        $db->query("UPDATE sms_logs SET status = 'failed' WHERE id = $smsLogId");
-        error_log("SMS sending error: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Send event reminder notifications
- */
-function sendEventReminders()
-{
-    global $db;
-
-    // Get events starting in 24 hours
-    $sql = "SELECT DISTINCT e.*, t.user_id, t.recipient_email, t.recipient_name, u.phone_number
-            FROM events e
-            JOIN tickets t ON e.id = t.event_id
-            JOIN users u ON t.user_id = u.id
-            WHERE e.start_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-            AND t.status = 'sold'
-            AND e.status = 'active'";
-
-    $reminders = $db->fetchAll($sql);
-
-    foreach ($reminders as $reminder) {
-        // Send email reminder
-        $subject = "Reminder: " . $reminder['title'] . " is tomorrow!";
-        $htmlBody = getEventReminderEmailTemplate($reminder);
-        $plainText = "Don't forget! " . $reminder['title'] . " is tomorrow at " . formatTime($reminder['start_time']) . " at " . $reminder['venue'] . ".";
-
-        sendEnhancedEmail($reminder['recipient_email'], $subject, $htmlBody, $plainText);
-
-        // Send SMS reminder if phone number available
-        if (!empty($reminder['phone_number'])) {
-            $smsMessage = "Reminder: " . $reminder['title'] . " is TOMORROW at " . formatTime($reminder['start_time']) . " at " . $reminder['venue'] . ". Don't forget your ticket!";
-            sendEnhancedSMS($reminder['phone_number'], $smsMessage);
-        }
-    }
-}
-
-/**
- * Get event reminder email template
- */
-function getEventReminderEmailTemplate($eventDetails)
+function getSimpleTicketEmailTemplate($ticket, $eventDetails)
 {
     $html = '
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Event Reminder - ' . htmlspecialchars($eventDetails['title']) . '</title>
-        <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: white; padding: 30px; border: 1px solid #ddd; }
-            .reminder-card { background: #fef3c7; border: 2px solid #f59e0b; border-radius: 10px; padding: 20px; margin: 20px 0; }
-            .countdown { background: #dc2626; color: white; padding: 15px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; }
-            .btn { display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>⏰ Event Reminder</h1>
-                <p>Don\'t miss your upcoming event!</p>
-            </div>
-            
-            <div class="content">
-                <div class="countdown">
-                    🚨 TOMORROW: ' . htmlspecialchars($eventDetails['title']) . ' 🚨
-                </div>
-                
-                <div class="reminder-card">
-                    <h2 style="color: #d97706; margin-top: 0;">📅 Event Details</h2>
-                    <p><strong>Date:</strong> ' . formatDate($eventDetails['start_date']) . '</p>
-                    <p><strong>Time:</strong> ' . formatTime($eventDetails['start_time']) . '</p>
-                    <p><strong>Venue:</strong> ' . htmlspecialchars($eventDetails['venue']) . '</p>
-                    <p><strong>Location:</strong> ' . htmlspecialchars($eventDetails['city']) . '</p>
-                </div>
-                
-                <div style="background: #dbeafe; border: 1px solid #3b82f6; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                    <h4 style="color: #1e40af; margin-top: 0;">📋 Checklist for Tomorrow</h4>
-                    <ul style="color: #1e40af;">
-                        <li>✅ Have your ticket ready (digital or printed)</li>
-                        <li>✅ Bring a valid photo ID</li>
-                        <li>✅ Arrive 30 minutes early</li>
-                        <li>✅ Check traffic and parking options</li>
-                    </ul>
-                </div>
-                
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="' . SITE_URL . '/customer/tickets.php" class="btn">View My Tickets</a>
-                </div>
-            </div>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #6366f1;">Your Ticket Confirmation</h2>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3>' . htmlspecialchars($eventDetails['title']) . '</h3>
+            <p><strong>Ticket Type:</strong> ' . htmlspecialchars($ticket['ticket_name']) . '</p>
+            <p><strong>Ticket ID:</strong> #' . $ticket['id'] . '</p>
+            <p><strong>Date:</strong> ' . formatDate($eventDetails['start_date']) . '</p>
+            <p><strong>Time:</strong> ' . formatTime($eventDetails['start_time']) . '</p>
+            <p><strong>Venue:</strong> ' . htmlspecialchars($eventDetails['venue']) . ', ' . htmlspecialchars($eventDetails['city']) . '</p>
+            <p><strong>Recipient:</strong> ' . htmlspecialchars($ticket['recipient_name']) . '</p>
+            <p><strong>Price:</strong> ' . formatCurrency($ticket['purchase_price']) . '</p>
         </div>
-    </body>
-    </html>';
+        
+        <div style="background: #e0e7ff; padding: 15px; border-radius: 8px;">
+            <p><strong>Verification Code:</strong> ' . htmlspecialchars($ticket['qr_code']) . '</p>
+            <p>Show this code at the event entrance along with a valid ID.</p>
+        </div>
+        
+        <p style="margin-top: 20px;">
+            <a href="' . SITE_URL . '/view-ticket.php?id=' . $ticket['id'] . '" 
+               style="background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+               View Full Ticket
+            </a>
+        </p>
+        
+        <hr style="margin: 30px 0;">
+        <p style="font-size: 12px; color: #666;">
+            This is an automated email from ' . SITE_NAME . '. 
+            If you have any questions, please contact us at ' . SMTP_FROM_EMAIL . '.
+        </p>
+    </div>';
 
     return $html;
 }
 
 /**
- * Create notification in database
+ * Create database tables for logging if they don't exist
  */
-function createNotification($userId, $title, $message, $type = 'system')
+function createNotificationTables()
 {
     global $db;
 
-    $sql = "INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
-            VALUES ($userId, '" . $db->escape($title) . "', '" . $db->escape($message) . "', '$type', 0, NOW())";
+    // Create email logs table
+    $emailLogsSql = "CREATE TABLE IF NOT EXISTS email_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        recipient_email VARCHAR(255) NOT NULL,
+        subject VARCHAR(500) NOT NULL,
+        message TEXT,
+        status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        sent_at TIMESTAMP NULL,
+        INDEX idx_recipient (recipient_email),
+        INDEX idx_status (status),
+        INDEX idx_created (created_at)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
 
-    return $db->insert($sql);
+    // Create SMS logs table
+    $smsLogsSql = "CREATE TABLE IF NOT EXISTS sms_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        recipient_phone VARCHAR(20) NOT NULL,
+        message TEXT NOT NULL,
+        status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        sent_at TIMESTAMP NULL,
+        INDEX idx_recipient (recipient_phone),
+        INDEX idx_status (status),
+        INDEX idx_created (created_at)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+
+    $db->query($emailLogsSql);
+    $db->query($smsLogsSql);
 }
+
+// Create tables when this file is included
+createNotificationTables();
+
+/**
+ * Test email function
+ */
+function testEmail($testEmail = null)
+{
+    $testEmail = $testEmail ?: SMTP_FROM_EMAIL;
+
+    $subject = "Test Email from " . SITE_NAME;
+    $body = "
+    <h2>Email Test Successful!</h2>
+    <p>This is a test email to verify that your email configuration is working correctly.</p>
+    <p><strong>Sent at:</strong> " . date('Y-m-d H:i:s') . "</p>
+    <p><strong>From:</strong> " . SITE_NAME . "</p>
+    ";
+
+    $result = sendEmail($testEmail, $subject, $body);
+
+    if ($result) {
+        error_log("Test email sent successfully to: $testEmail");
+        return true;
+    } else {
+        error_log("Test email failed to: $testEmail");
+        return false;
+    }
+}
+
+/**
+ * Test SMS function
+ */
+function testSMS($testPhone = null)
+{
+    $testPhone = $testPhone ?: '+250123456789'; // Default test number
+
+    $message = "Test SMS from " . SITE_NAME . ". Your SMS configuration is working! Sent at " . date('H:i');
+
+    $result = sendSMS($testPhone, $message);
+
+    if ($result) {
+        error_log("Test SMS sent successfully to: $testPhone");
+        return true;
+    } else {
+        error_log("Test SMS failed to: $testPhone");
+        return false;
+    }
+}
+
+/**
+ * Send notification (combines email and SMS)
+ */
+function sendNotification($email, $phone, $subject, $emailBody, $smsMessage, $plainTextEmail = '')
+{
+    $emailResult = false;
+    $smsResult = false;
+
+    // Send email
+    if (!empty($email)) {
+        $emailResult = sendEmail($email, $subject, $emailBody, $plainTextEmail);
+    }
+
+    // Send SMS
+    if (!empty($phone)) {
+        $smsResult = sendSMS($phone, $smsMessage);
+    }
+
+    return [
+        'email' => $emailResult,
+        'sms' => $smsResult
+    ];
+}
+
+/**
+ * Get notification statistics
+ */
+function getNotificationStats()
+{
+    global $db;
+
+    $stats = [
+        'emails' => [
+            'total' => 0,
+            'sent' => 0,
+            'failed' => 0,
+            'pending' => 0
+        ],
+        'sms' => [
+            'total' => 0,
+            'sent' => 0,
+            'failed' => 0,
+            'pending' => 0
+        ]
+    ];
+
+    // Email stats
+    $emailStats = $db->fetchAll("SELECT status, COUNT(*) as count FROM email_logs GROUP BY status");
+    foreach ($emailStats as $stat) {
+        $stats['emails'][$stat['status']] = $stat['count'];
+        $stats['emails']['total'] += $stat['count'];
+    }
+
+    // SMS stats
+    $smsStats = $db->fetchAll("SELECT status, COUNT(*) as count FROM sms_logs GROUP BY status");
+    foreach ($smsStats as $stat) {
+        $stats['sms'][$stat['status']] = $stat['count'];
+        $stats['sms']['total'] += $stat['count'];
+    }
+
+    return $stats;
+}
+?>

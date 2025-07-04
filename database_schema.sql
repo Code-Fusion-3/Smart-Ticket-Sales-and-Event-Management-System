@@ -350,3 +350,34 @@ CREATE TABLE IF NOT EXISTS settings_cache (
     expires_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+/* new sql */
+-- Email logs table
+CREATE TABLE IF NOT EXISTS email_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    recipient_email VARCHAR(255) NOT NULL,
+    subject VARCHAR(500) NOT NULL,
+    message TEXT,
+    status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP NULL,
+    INDEX idx_recipient (recipient_email),
+    INDEX idx_status (status),
+    INDEX idx_created (created_at)
+);
+
+-- SMS logs table
+CREATE TABLE IF NOT EXISTS sms_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    recipient_phone VARCHAR(20) NOT NULL,
+    message TEXT NOT NULL,
+    status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP NULL,
+    INDEX idx_recipient (recipient_phone),
+    INDEX idx_status (status),
+    INDEX idx_created (created_at)
+);
