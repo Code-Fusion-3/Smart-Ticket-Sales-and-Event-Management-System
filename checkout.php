@@ -9,10 +9,49 @@ require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 require_once 'includes/notifications.php';
 require_once 'checkout-logics.php';
+require_once __DIR__ . '/vendor/autoload.php';
 
+// Load environment variables
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
 
+// Initialize Stripe
+\Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
 
 include 'includes/header.php';
+
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    isset($_POST['payment_method']) &&
+    $_POST['payment_method'] === 'credit_card' &&
+    ($user['balance'] < $total)
+) {
+    // Prepare line items for Stripe
+    $line_items = [];
+    foreach ($cartItems as $item) {
+        $line_items[] = [
+            'price_data' => [
+                'currency' => 'usd',
+                'product_data' => [
+                    'name' => $item['title'] . ' - ' . $item['ticket_name'],
+                ],
+                'unit_amount' => intval($item['ticket_price'] * 100), // Stripe expects cents
+            ],
+            'quantity' => $item['quantity'],
+        ];
+    }
+    
+    $session = \Stripe\Checkout\Session::create([
+        'payment_method_types' => ['card'],
+        'line_items' => $line_items,
+        'mode' => 'payment',
+        'customer_email' => $user['email'],
+        'success_url' => SITE_URL . '/order-confirmation.php?session_id={CHECKOUT_SESSION_ID}',
+        'cancel_url' => SITE_URL . '/checkout.php?canceled=1',
+    ]);
+    header('Location: ' . $session->url);
+    exit;
+}
 ?>
 <!-- Enhanced CSS for better styling -->
 <link rel="stylesheet" href="assets/css/checkout.css">
@@ -340,64 +379,16 @@ include 'includes/header.php';
                         <div id="credit-card-details" class="payment-details mb-6 p-4 bg-gray-50 rounded-lg">
                             <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
                                 <i class="fas fa-credit-card mr-2 text-indigo-600"></i>
-                                Credit Card Information
+                                Pay with Card (Stripe)
                             </h3>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div class="md:col-span-2">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Card Number</label>
-                                    <input type="text" id="card_number" name="card_number"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                        placeholder="4242 4242 4242 4242" maxlength="19">
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        <i class="fas fa-info-circle mr-1"></i>
-                                        For testing, use: 4242 4242 4242 4242
-                                    </p>
-                                </div>
-                                <div>
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Cardholder Name</label>
-                                    <input type="text" id="card_name" name="card_name"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                        placeholder="John Doe">
-                                </div>
-                                <div>
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Email for Receipt</label>
-                                    <input type="email" id="card_email" name="card_email"
-                                        value="<?php echo htmlspecialchars($user['email']); ?>"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Expiry Month</label>
-                                    <select id="card_month" name="card_month"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-                                        <?php for ($i = 1; $i <= 12; $i++): ?>
-                                        <option value="<?php echo $i; ?>"><?php echo sprintf('%02d', $i); ?></option>
-                                        <?php endfor; ?>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Expiry Year</label>
-                                    <select id="card_year" name="card_year"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-                                        <?php 
-                                        $currentYear = date('Y');
-                                        for ($i = $currentYear; $i <= $currentYear + 10; $i++): 
-                                        ?>
-                                        <option value="<?php echo $i; ?>"><?php echo $i; ?></option>
-                                        <?php endfor; ?>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">CVV</label>
-                                    <input type="text" id="card_cvv" name="card_cvv"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                        placeholder="123" maxlength="4">
-                                    <p class="text-xs text-gray-500 mt-1">3-4 digits on back of card</p>
-                                </div>
-                            </div>
+                            <button type="submit" id="stripe-checkout-button"
+                                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-lg transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+                                <i class="fab fa-cc-stripe mr-2"></i>
+                                Pay Securely with Stripe
+                            </button>
+                            <p class="text-xs text-gray-500 mt-2">
+                                You will be redirected to Stripe's secure payment page.
+                            </p>
                         </div>
 
                         <!-- Mobile Money Details -->

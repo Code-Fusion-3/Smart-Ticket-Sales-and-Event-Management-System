@@ -87,47 +87,47 @@ include 'includes/header.php';
 
         <!-- Success Message for New Purchase -->
         <?php if ($isNewPurchase): ?>
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6 animate-pulse">
-                <div class="flex items-center">
-                    <i class="fas fa-check-circle text-green-500 text-2xl mr-3"></i>
-                    <div>
-                        <h3 class="font-bold text-lg">🎉 Purchase Successful!</h3>
-                        <p class="text-sm mt-1">
-                            Your ticket has been purchased successfully! A confirmation email has been sent to
-                            <strong><?php echo htmlspecialchars($ticket['recipient_email']); ?></strong>
-                        </p>
-                        <div class="mt-2 flex flex-wrap gap-2">
-                            <span
-                                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-200 text-green-800">
-                                <i class="fas fa-envelope mr-1"></i> Email Sent
-                            </span>
-                            <span
-                                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-200 text-blue-800">
-                                <i class="fas fa-qrcode mr-1"></i> QR Code Ready
-                            </span>
-                            <span
-                                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
-                                <i class="fas fa-download mr-1"></i> Download Available
-                            </span>
-                        </div>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6 animate-pulse">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-500 text-2xl mr-3"></i>
+                <div>
+                    <h3 class="font-bold text-lg">🎉 Purchase Successful!</h3>
+                    <p class="text-sm mt-1">
+                        Your ticket has been purchased successfully! A confirmation email has been sent to
+                        <strong><?php echo htmlspecialchars($ticket['recipient_email']); ?></strong>
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-200 text-green-800">
+                            <i class="fas fa-envelope mr-1"></i> Email Sent
+                        </span>
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-200 text-blue-800">
+                            <i class="fas fa-qrcode mr-1"></i> QR Code Ready
+                        </span>
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
+                            <i class="fas fa-download mr-1"></i> Download Available
+                        </span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="bg-white border border-indigo-200 rounded-lg p-4 mb-6">
-                <h4 class="font-semibold text-gray-900 mb-3">Quick Actions</h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <a href="download-ticket.php?id=<?php echo $ticketId; ?>"
-                        class="flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded transition duration-300">
-                        <i class="fas fa-download mr-2"></i> Download Ticket
-                    </a>
+        <div class="bg-white border border-indigo-200 rounded-lg p-4 mb-6">
+            <h4 class="font-semibold text-gray-900 mb-3">Quick Actions</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <a href="download-ticket.php?id=<?php echo $ticketId; ?>"
+                    class="flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded transition duration-300">
+                    <i class="fas fa-download mr-2"></i> Download Ticket
+                </a>
 
-                    <a href="event-details.php?id=<?php echo $ticket['event_id']; ?>"
-                        class="flex items-center justify-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition duration-300">
-                        <i class="fas fa-info-circle mr-2"></i> Event Details
-                    </a>
-                </div>
+                <a href="event-details.php?id=<?php echo $ticket['event_id']; ?>"
+                    class="flex items-center justify-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition duration-300">
+                    <i class="fas fa-info-circle mr-2"></i> Event Details
+                </a>
             </div>
+        </div>
         <?php endif; ?>
 
         <!-- Professional Ticket Design -->
@@ -159,29 +159,29 @@ include 'includes/header.php';
             <div class="p-6 relative z-10">
                 <!-- Event Image Banner -->
                 <?php if (!empty($ticket['image'])): ?>
-                    <div class="mb-6 rounded-lg overflow-hidden h-48 relative">
-                        <img src="<?php echo substr($ticket['image'], strpos($ticket['image'], 'uploads')); ?>"
-                            alt="<?php echo htmlspecialchars($ticket['event_title']); ?>"
-                            class="w-full h-full object-cover">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
-                        <div class="absolute bottom-0 left-0 p-4 text-white">
-                            <h2 class="text-2xl font-bold"><?php echo htmlspecialchars($ticket['event_title']); ?></h2>
-                            <?php if (!empty($ticket['ticket_type_name'])): ?>
-                                <div class="text-indigo-200 font-medium">
-                                    <?php echo htmlspecialchars($ticket['ticket_type_name']); ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php else: ?>
-                    <div class="mb-6">
+                <div class="mb-6 rounded-lg overflow-hidden h-48 relative">
+                    <img src="<?php echo substr($ticket['image'], strpos($ticket['image'], 'uploads')); ?>"
+                        alt="<?php echo htmlspecialchars($ticket['event_title']); ?>"
+                        class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
+                    <div class="absolute bottom-0 left-0 p-4 text-white">
                         <h2 class="text-2xl font-bold"><?php echo htmlspecialchars($ticket['event_title']); ?></h2>
                         <?php if (!empty($ticket['ticket_type_name'])): ?>
-                            <div class="text-indigo-600 font-medium">
-                                <?php echo htmlspecialchars($ticket['ticket_type_name']); ?>
-                            </div>
+                        <div class="text-indigo-200 font-medium">
+                            <?php echo htmlspecialchars($ticket['ticket_type_name']); ?>
+                        </div>
                         <?php endif; ?>
                     </div>
+                </div>
+                <?php else: ?>
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold"><?php echo htmlspecialchars($ticket['event_title']); ?></h2>
+                    <?php if (!empty($ticket['ticket_type_name'])): ?>
+                    <div class="text-indigo-600 font-medium">
+                        <?php echo htmlspecialchars($ticket['ticket_type_name']); ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
                 <?php endif; ?>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -212,10 +212,10 @@ include 'includes/header.php';
                                 </a>
 
                                 <?php if ($ticket['status'] === 'sold' && $eventStatus !== 'past'): ?>
-                                    <a href="resell-ticket.php?id=<?php echo $ticketId; ?>"
-                                        class="block w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                                        <i class="fas fa-exchange-alt mr-2"></i> Resell Ticket
-                                    </a>
+                                <a href="resell-ticket.php?id=<?php echo $ticketId; ?>"
+                                    class="block w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                                    <i class="fas fa-exchange-alt mr-2"></i> Resell Ticket
+                                </a>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -300,23 +300,23 @@ include 'includes/header.php';
                                         <span><?php echo htmlspecialchars($ticket['recipient_email']); ?></span>
                                     </div>
                                     <?php if (!empty($ticket['recipient_phone'])): ?>
-                                        <div class="flex items-start">
-                                            <span class="font-medium w-20">Phone:</span>
-                                            <span><?php echo htmlspecialchars($ticket['recipient_phone']); ?></span>
-                                        </div>
+                                    <div class="flex items-start">
+                                        <span class="font-medium w-20">Phone:</span>
+                                        <span><?php echo htmlspecialchars($ticket['recipient_phone']); ?></span>
+                                    </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
 
                             <?php if (!empty($ticket['event_description'])): ?>
-                                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                    <h3 class="font-semibold text-gray-700 mb-2 flex items-center">
-                                        <i class="fas fa-info-circle text-indigo-500 mr-2"></i> Event Description
-                                    </h3>
-                                    <div class="text-sm text-gray-600">
-                                        <?php echo nl2br(htmlspecialchars($ticket['event_description'])); ?>
-                                    </div>
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                <h3 class="font-semibold text-gray-700 mb-2 flex items-center">
+                                    <i class="fas fa-info-circle text-indigo-500 mr-2"></i> Event Description
+                                </h3>
+                                <div class="text-sm text-gray-600">
+                                    <?php echo nl2br(htmlspecialchars($ticket['event_description'])); ?>
                                 </div>
+                            </div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -415,19 +415,19 @@ include 'includes/header.php';
 
         <!-- Event Location Map -->
         <?php if (!empty($ticket['address']) || !empty($ticket['city'])): ?>
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="bg-indigo-600 text-white px-6 py-4">
-                    <h2 class="text-xl font-bold">Event Location</h2>
-                </div>
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="bg-indigo-600 text-white px-6 py-4">
+                <h2 class="text-xl font-bold">Event Location</h2>
+            </div>
 
-                <div class="p-6">
-                    <div class="aspect-w-16 aspect-h-9 mb-4">
-                        <!-- In a real app, integrate with Google Maps or similar service -->
-                        <div class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center">
-                            <div class="text-center">
-                                <i class="fas fa-map-marker-alt text-4xl text-gray-400 mb-2"></i>
-                                <p class="text-gray-600">
-                                    <?php
+            <div class="p-6">
+                <div class="aspect-w-16 aspect-h-9 mb-4">
+                    <!-- In a real app, integrate with Google Maps or similar service -->
+                    <div class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <div class="text-center">
+                            <i class="fas fa-map-marker-alt text-4xl text-gray-400 mb-2"></i>
+                            <p class="text-gray-600">
+                                <?php
                                     $mapAddress = [];
                                     if (!empty($ticket['venue']))
                                         $mapAddress[] = $ticket['venue'];
@@ -439,266 +439,266 @@ include 'includes/header.php';
                                         $mapAddress[] = $ticket['country'];
                                     echo htmlspecialchars(implode(', ', $mapAddress));
                                     ?>
-                                </p>
-                            </div>
+                            </p>
                         </div>
                     </div>
+                </div>
 
-                    <div class="flex justify-center">
-                        <a href="https://maps.google.com/?q=<?php echo urlencode(implode(', ', $mapAddress)); ?>"
-                            target="_blank" rel="noopener noreferrer"
-                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
-                            <i class="fas fa-directions mr-2"></i> Get Directions
-                        </a>
-                    </div>
+                <div class="flex justify-center">
+                    <a href="https://maps.google.com/?q=<?php echo urlencode(implode(', ', $mapAddress)); ?>"
+                        target="_blank" rel="noopener noreferrer"
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                        <i class="fas fa-directions mr-2"></i> Get Directions
+                    </a>
                 </div>
             </div>
+        </div>
         <?php endif; ?>
     </div>
 </div>
 
 <script>
-    function shareTicket() {
-        // Check if Web Share API is supported
-        if (navigator.share) {
-            navigator.share({
+function shareTicket() {
+    // Check if Web Share API is supported
+    if (navigator.share) {
+        navigator.share({
                 title: '<?php echo htmlspecialchars($ticket['event_title']); ?> Ticket',
                 text: 'Check out my ticket for <?php echo htmlspecialchars($ticket['event_title']); ?>!',
                 url: window.location.href
             })
-                .catch(error => console.log('Error sharing:', error));
-        } else {
-            // Fallback for browsers that don't support Web Share API
-            alert('Copy this link to share your ticket: ' + window.location.href);
-        }
+            .catch(error => console.log('Error sharing:', error));
+    } else {
+        // Fallback for browsers that don't support Web Share API
+        alert('Copy this link to share your ticket: ' + window.location.href);
     }
+}
 </script>
 
 <!-- Print Styles -->
 <style media="print">
-    /* Hide navigation, footer, and non-ticket sections */
-    nav,
-    footer,
-    .no-print,
-    .mb-6:first-child,
-    .bg-green-100,
-    .bg-white.border.border-indigo-200,
-    .bg-white.rounded-lg.shadow-md,
-    .bg-white.rounded-lg.shadow-lg:last-child,
-    .bg-white.rounded-lg.shadow-md.overflow-hidden.mb-8,
-    .bg-white.rounded-lg.shadow-md.overflow-hidden {
-        display: none !important;
-    }
+/* Hide navigation, footer, and non-ticket sections */
+nav,
+footer,
+.no-print,
+.mb-6:first-child,
+.bg-green-100,
+.bg-white.border.border-indigo-200,
+.bg-white.rounded-lg.shadow-md,
+.bg-white.rounded-lg.shadow-lg:last-child,
+.bg-white.rounded-lg.shadow-md.overflow-hidden.mb-8,
+.bg-white.rounded-lg.shadow-md.overflow-hidden {
+    display: none !important;
+}
 
-    /* Hide only action buttons and interactive elements */
-    button,
-    a[href*="download"],
-    a[href*="email"],
-    a[href*="resell"],
-    a[href*="event-details"],
-    .flex.space-x-2,
-    .bg-gray-50.px-6.py-4.border-t {
-        display: none !important;
-    }
+/* Hide only action buttons and interactive elements */
+button,
+a[href*="download"],
+a[href*="email"],
+a[href*="resell"],
+a[href*="event-details"],
+.flex.space-x-2,
+.bg-gray-50.px-6.py-4.border-t {
+    display: none !important;
+}
 
-    /* Show the entire ticket content */
-    .print-ticket {
-        display: block !important;
-        page-break-inside: avoid !important;
-    }
+/* Show the entire ticket content */
+.print-ticket {
+    display: block !important;
+    page-break-inside: avoid !important;
+}
 
-    /* Fix grid and columns for print */
-    .grid,
-    .md\:col-span-1,
-    .md\:col-span-2 {
-        display: block !important;
-        width: 100% !important;
-        margin-bottom: 20px !important;
-    }
+/* Fix grid and columns for print */
+.grid,
+.md\:col-span-1,
+.md\:col-span-2 {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 20px !important;
+}
 
-    /* Reset body and container styles for print */
-    body {
-        background-color: white !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        font-family: Arial, sans-serif !important;
-    }
+/* Reset body and container styles for print */
+body {
+    background-color: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: Arial, sans-serif !important;
+}
 
-    .container {
-        width: 100% !important;
-        max-width: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
+.container {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
 
-    .max-w-4xl {
-        max-width: none !important;
-        margin: 0 !important;
-    }
+.max-w-4xl {
+    max-width: none !important;
+    margin: 0 !important;
+}
 
-    /* Ticket styling for print */
-    .bg-white.rounded-lg.shadow-lg.overflow-hidden {
-        border: 2px solid #000 !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        margin: 0 !important;
-        page-break-inside: avoid !important;
-    }
+/* Ticket styling for print */
+.bg-white.rounded-lg.shadow-lg.overflow-hidden {
+    border: 2px solid #000 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    page-break-inside: avoid !important;
+}
 
-    /* Header styling */
-    .bg-indigo-600 {
-        background-color: #4f46e5 !important;
-        color: white !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        padding: 15px !important;
-        border-bottom: 2px solid #000 !important;
-    }
+/* Header styling */
+.bg-indigo-600 {
+    background-color: #4f46e5 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    padding: 15px !important;
+    border-bottom: 2px solid #000 !important;
+}
 
-    /* Content area */
-    .p-6 {
-        padding: 20px !important;
-    }
+/* Content area */
+.p-6 {
+    padding: 20px !important;
+}
 
-    /* QR Code styling */
-    .bg-gray-50.p-4.rounded-lg {
-        background-color: #f9fafb !important;
-        border: 1px solid #ddd !important;
-        border-radius: 0 !important;
-        padding: 15px !important;
-        text-align: center !important;
-    }
+/* QR Code styling */
+.bg-gray-50.p-4.rounded-lg {
+    background-color: #f9fafb !important;
+    border: 1px solid #ddd !important;
+    border-radius: 0 !important;
+    padding: 15px !important;
+    text-align: center !important;
+}
 
-    .mx-auto.w-48.h-48 {
-        width: 200px !important;
-        height: 200px !important;
-        margin: 0 auto 10px auto !important;
-    }
+.mx-auto.w-48.h-48 {
+    width: 200px !important;
+    height: 200px !important;
+    margin: 0 auto 10px auto !important;
+}
 
-    /* Event details styling */
-    .bg-gray-50.p-4.rounded-lg.border {
-        background-color: #f9fafb !important;
-        border: 1px solid #ddd !important;
-        border-radius: 0 !important;
-        padding: 15px !important;
-        margin-bottom: 15px !important;
-    }
+/* Event details styling */
+.bg-gray-50.p-4.rounded-lg.border {
+    background-color: #f9fafb !important;
+    border: 1px solid #ddd !important;
+    border-radius: 0 !important;
+    padding: 15px !important;
+    margin-bottom: 15px !important;
+}
 
-    /* Text styling */
-    h1,
-    h2,
-    h3 {
-        margin: 0 0 10px 0 !important;
-        font-weight: bold !important;
-    }
+/* Text styling */
+h1,
+h2,
+h3 {
+    margin: 0 0 10px 0 !important;
+    font-weight: bold !important;
+}
 
-    .text-2xl {
-        font-size: 18px !important;
-    }
+.text-2xl {
+    font-size: 18px !important;
+}
 
-    .text-xl {
-        font-size: 16px !important;
-    }
+.text-xl {
+    font-size: 16px !important;
+}
 
-    .text-sm {
-        font-size: 12px !important;
-    }
+.text-sm {
+    font-size: 12px !important;
+}
 
-    .text-xs {
-        font-size: 10px !important;
-    }
+.text-xs {
+    font-size: 10px !important;
+}
 
-    /* Status badges */
-    .px-2.py-1.text-xs.font-semibold.rounded-full {
-        display: inline-block !important;
-        padding: 3px 8px !important;
-        border: 1px solid #000 !important;
-        border-radius: 0 !important;
-        font-size: 10px !important;
-        font-weight: bold !important;
-        margin-left: 10px !important;
-    }
+/* Status badges */
+.px-2.py-1.text-xs.font-semibold.rounded-full {
+    display: inline-block !important;
+    padding: 3px 8px !important;
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    font-size: 10px !important;
+    font-weight: bold !important;
+    margin-left: 10px !important;
+}
 
-    /* Hide tear line and decorative elements */
-    .relative.py-2,
-    .absolute.left-0.right-0,
-    .absolute.left-0.top-0,
-    .absolute.right-0.top-0 {
-        display: none !important;
-    }
+/* Hide tear line and decorative elements */
+.relative.py-2,
+.absolute.left-0.right-0,
+.absolute.left-0.top-0,
+.absolute.right-0.top-0 {
+    display: none !important;
+}
 
-    /* Page setup */
-    @page {
-        margin: 1cm;
-        size: A4;
-    }
+/* Page setup */
+@page {
+    margin: 1cm;
+    size: A4;
+}
 
-    /* Ensure colors print */
-    .text-white {
-        color: white !important;
-    }
+/* Ensure colors print */
+.text-white {
+    color: white !important;
+}
 
-    .text-gray-600 {
-        color: #4b5563 !important;
-    }
+.text-gray-600 {
+    color: #4b5563 !important;
+}
 
-    .text-gray-700 {
-        color: #374151 !important;
-    }
+.text-gray-700 {
+    color: #374151 !important;
+}
 
-    .text-indigo-600 {
-        color: #4f46e5 !important;
-    }
+.text-indigo-600 {
+    color: #4f46e5 !important;
+}
 
-    /* Hide background images and patterns */
-    .absolute.inset-0.opacity-5,
-    .absolute.inset-0.bg-gradient-to-t {
-        display: none !important;
-    }
+/* Hide background images and patterns */
+.absolute.inset-0.opacity-5,
+.absolute.inset-0.bg-gradient-to-t {
+    display: none !important;
+}
 
-    /* Event image for print */
-    .mb-6.rounded-lg.overflow-hidden.h-48 {
-        height: auto !important;
-        max-height: 150px !important;
-        margin-bottom: 15px !important;
-    }
+/* Event image for print */
+.mb-6.rounded-lg.overflow-hidden.h-48 {
+    height: auto !important;
+    max-height: 150px !important;
+    margin-bottom: 15px !important;
+}
 
-    .mb-6.rounded-lg.overflow-hidden.h-48 img {
-        width: 100% !important;
-        height: auto !important;
-        max-height: 150px !important;
-        object-fit: cover !important;
-    }
+.mb-6.rounded-lg.overflow-hidden.h-48 img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 150px !important;
+    object-fit: cover !important;
+}
 
-    /* Price display */
-    .flex.items-center.text-gray-600.mb-4 {
-        background-color: #f9fafb !important;
-        padding: 10px !important;
-        border-left: 4px solid #4f46e5 !important;
-        margin-bottom: 15px !important;
-    }
+/* Price display */
+.flex.items-center.text-gray-600.mb-4 {
+    background-color: #f9fafb !important;
+    padding: 10px !important;
+    border-left: 4px solid #4f46e5 !important;
+    margin-bottom: 15px !important;
+}
 
-    /* Ensure proper spacing */
-    .space-y-2>*+* {
-        margin-top: 8px !important;
-    }
+/* Ensure proper spacing */
+.space-y-2>*+* {
+    margin-top: 8px !important;
+}
 
-    .space-y-4>*+* {
-        margin-top: 15px !important;
-    }
+.space-y-4>*+* {
+    margin-top: 15px !important;
+}
 
-    /* Hide icons in print for cleaner look */
-    .fas,
-    .far {
-        display: none !important;
-    }
+/* Hide icons in print for cleaner look */
+.fas,
+.far {
+    display: none !important;
+}
 
-    /* Show only essential information */
-    .font-medium.w-20 {
-        font-weight: bold !important;
-        display: inline-block !important;
-        width: 80px !important;
-    }
+/* Show only essential information */
+.font-medium.w-20 {
+    font-weight: bold !important;
+    display: inline-block !important;
+    width: 80px !important;
+}
 </style>
 
 <?php include 'includes/footer.php'; ?>
