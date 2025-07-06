@@ -29,11 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
         foreach ($cartItems as $item) {
             $line_items[] = [
                 'price_data' => [
-                    'currency' => 'usd',
+                    'currency' => 'rwf',
                     'product_data' => [
                         'name' => $item['title'] . ' - ' . $item['ticket_name'],
                     ],
-                    'unit_amount' => intval($item['ticket_price'] * 100), // Stripe expects cents
+                    'unit_amount' => intval($item['ticket_price'] * 1), // Stripe expects cents
                 ],
                 'quantity' => $item['quantity'],
             ];
