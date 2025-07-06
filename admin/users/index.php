@@ -14,17 +14,17 @@ checkPermission('admin');
 
 // Handle user status updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
-        error_log("POST data: " . print_r($_POST, true));
-            error_log("Target User ID: " . $targetUserId);
+    error_log("POST data: " . print_r($_POST, true));
+    error_log("Target User ID: " . $targetUserId);
     error_log("New Status: " . $newStatus);
 
-    $targetUserId = (int)$_POST['user_id'];
+    $targetUserId = (int) $_POST['user_id'];
     $newStatus = $_POST['update_status']; // This gets the value from the button
-    
+
     if (in_array($newStatus, ['active', 'suspended', 'inactive']) && $targetUserId > 0) {
-        $sql = "UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?";
-        $stmt = $db->prepare($sql);
-        if ($stmt->execute([$newStatus, $targetUserId])) {
+        $escapedStatus = $db->escape($newStatus);
+        $sql = "UPDATE users SET status = '$escapedStatus', updated_at = NOW() WHERE id = $targetUserId";
+        if ($db->query($sql)) {
             $_SESSION['success_message'] = "User status updated to " . ucfirst($newStatus) . " successfully.";
         } else {
             $_SESSION['error_message'] = "Failed to update user status.";
@@ -37,16 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
 
 // Handle user deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
-    $targetUserId = (int)$_POST['user_id'];
-    
+    $targetUserId = (int) $_POST['user_id'];
+
     // Check if user has any events or tickets
     $checkSql = "SELECT 
-                    (SELECT COUNT(*) FROM events WHERE planner_id = ". $targetUserId .") as events_count,
-                    (SELECT COUNT(*) FROM tickets WHERE user_id = ". $targetUserId .") as tickets_count";
+                    (SELECT COUNT(*) FROM events WHERE planner_id = " . $targetUserId . ") as events_count,
+                    (SELECT COUNT(*) FROM tickets WHERE user_id = " . $targetUserId . ") as tickets_count";
     $checkResult = $db->fetchOne($checkSql);
 
-    
-    
+
+
     if ($checkResult['events_count'] > 0 || $checkResult['tickets_count'] > 0) {
         $_SESSION['error_message'] = "Cannot delete user with existing events or tickets. Suspend the user instead.";
     } else {
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
 
 
 // Pagination and filtering
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $perPage = 20;
 $offset = ($page - 1) * $perPage;
 
@@ -241,53 +241,53 @@ include '../../includes/admin_header.php';
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     <?php if (empty($users)): ?>
-                    <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">No users found</td>
-                    </tr>
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">No users found</td>
+                        </tr>
                     <?php else: ?>
-                    <?php foreach ($users as $user): ?>
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-3 sm:px-6 py-4">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
-                                    <?php if ($user['profile_image']): ?>
-                                    <img class="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover"
-                                        src="<?php echo SITE_URL; ?>/uploads/profiles/<?php echo $user['profile_image']; ?>"
-                                        alt="Profile">
-                                    <?php else: ?>
-                                    <div
-                                        class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                        <i class="fas fa-user text-gray-600 text-sm"></i>
+                        <?php foreach ($users as $user): ?>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-3 sm:px-6 py-4">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+                                            <?php if ($user['profile_image']): ?>
+                                                <img class="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover"
+                                                    src="<?php echo SITE_URL; ?>/uploads/profiles/<?php echo $user['profile_image']; ?>"
+                                                    alt="Profile">
+                                            <?php else: ?>
+                                                <div
+                                                    class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                                    <i class="fas fa-user text-gray-600 text-sm"></i>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="ml-3 sm:ml-4 min-w-0 flex-1">
+                                            <div class="text-sm font-medium text-gray-900 truncate">
+                                                <?php echo htmlspecialchars($user['username']); ?>
+                                            </div>
+                                            <div class="text-xs sm:text-sm text-gray-500 truncate sm:hidden">
+                                                <?php echo htmlspecialchars($user['email']); ?>
+                                            </div>
+                                            <div class="text-xs text-gray-500">
+                                                Joined <?php echo formatDate($user['created_at']); ?>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="ml-3 sm:ml-4 min-w-0 flex-1">
-                                    <div class="text-sm font-medium text-gray-900 truncate">
-                                        <?php echo htmlspecialchars($user['username']); ?>
-                                    </div>
-                                    <div class="text-xs sm:text-sm text-gray-500 truncate sm:hidden">
+                                </td>
+
+                                <td class="px-3 sm:px-6 py-4 hidden sm:table-cell">
+                                    <div class="text-sm text-gray-900 truncate max-w-32 lg:max-w-none">
                                         <?php echo htmlspecialchars($user['email']); ?>
                                     </div>
-                                    <div class="text-xs text-gray-500">
-                                        Joined <?php echo formatDate($user['created_at']); ?>
+                                    <div class="text-sm text-gray-500">
+                                        <?php echo htmlspecialchars($user['phone_number']); ?>
                                     </div>
-                                </div>
-                            </div>
-                        </td>
+                                </td>
 
-                        <td class="px-3 sm:px-6 py-4 hidden sm:table-cell">
-                            <div class="text-sm text-gray-900 truncate max-w-32 lg:max-w-none">
-                                <?php echo htmlspecialchars($user['email']); ?>
-                            </div>
-                            <div class="text-sm text-gray-500">
-                                <?php echo htmlspecialchars($user['phone_number']); ?>
-                            </div>
-                        </td>
-
-                        <td class="px-3 sm:px-6 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                        <?php 
-                                                                               switch($user['role']) {
+                                <td class="px-3 sm:px-6 py-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        <?php
+                                        switch ($user['role']) {
                                             case 'admin':
                                                 echo 'bg-red-100 text-red-800';
                                                 break;
@@ -301,30 +301,32 @@ include '../../includes/admin_header.php';
                                                 echo 'bg-gray-100 text-gray-800';
                                         }
                                         ?>">
-                                <?php echo ucfirst(str_replace('_', ' ', $user['role'])); ?>
-                            </span>
-                        </td>
+                                        <?php echo ucfirst(str_replace('_', ' ', $user['role'])); ?>
+                                    </span>
+                                </td>
 
-                        <td class="px-3 sm:px-6 py-4 hidden lg:table-cell">
-                            <div class="text-sm text-gray-900">
-                                <?php if ($user['role'] === 'event_planner'): ?>
-                                <div><?php echo $user['events_count']; ?> events</div>
-                                <div class="text-xs text-gray-500">Balance:
-                                    <?php echo formatCurrency($user['balance']); ?></div>
-                                <?php elseif ($user['role'] === 'customer'): ?>
-                                <div><?php echo $user['tickets_count']; ?> tickets</div>
-                                <div class="text-xs text-gray-500">Spent:
-                                    <?php echo formatCurrency($user['total_spent'] ?? 0); ?></div>
-                                <?php else: ?>
-                                <div class="text-gray-500">-</div>
-                                <?php endif; ?>
-                            </div>
-                        </td>
+                                <td class="px-3 sm:px-6 py-4 hidden lg:table-cell">
+                                    <div class="text-sm text-gray-900">
+                                        <?php if ($user['role'] === 'event_planner'): ?>
+                                            <div><?php echo $user['events_count']; ?> events</div>
+                                            <div class="text-xs text-gray-500">Balance:
+                                                <?php echo formatCurrency($user['balance']); ?>
+                                            </div>
+                                        <?php elseif ($user['role'] === 'customer'): ?>
+                                            <div><?php echo $user['tickets_count']; ?> tickets</div>
+                                            <div class="text-xs text-gray-500">Spent:
+                                                <?php echo formatCurrency($user['total_spent'] ?? 0); ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="text-gray-500">-</div>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
 
-                        <td class="px-3 sm:px-6 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                        <?php 
-                                        switch($user['status']) {
+                                <td class="px-3 sm:px-6 py-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        <?php
+                                        switch ($user['status']) {
                                             case 'active':
                                                 echo 'bg-green-100 text-green-800';
                                                 break;
@@ -338,83 +340,83 @@ include '../../includes/admin_header.php';
                                                 echo 'bg-gray-100 text-gray-800';
                                         }
                                         ?>">
-                                <?php echo ucfirst($user['status']); ?>
-                            </span>
-                        </td>
+                                        <?php echo ucfirst($user['status']); ?>
+                                    </span>
+                                </td>
 
-                        <td class="px-3 sm:px-6 py-4">
-                            <div class="flex items-center space-x-2">
-                                <!-- View Button -->
-                                <a href="view.php?id=<?php echo $user['id']; ?>"
-                                    class="text-indigo-600 hover:text-indigo-900 text-sm" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </a>
+                                <td class="px-3 sm:px-6 py-4">
+                                    <div class="flex items-center space-x-2">
+                                        <!-- View Button -->
+                                        <a href="view.php?id=<?php echo $user['id']; ?>"
+                                            class="text-indigo-600 hover:text-indigo-900 text-sm" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
 
-                                <!-- Status Toggle -->
-                                <div class="relative">
-                                    <button onclick="toggleDropdown('status-<?php echo $user['id']; ?>')"
-                                        class="text-yellow-600 hover:text-yellow-900 text-sm dropdown-toggle"
-                                        title="Change Status">
-                                        <i class="fas fa-toggle-on"></i>
-                                    </button>
-                                    <div id="status-<?php echo $user['id']; ?>"
-                                        class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-                                        <form method="POST" action="">
-                                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                                            <div class="hidden">
-                                                <?php if ($user['status'] !== 'suspended'): ?>
-                                                <button type="submit" name="update_status" value="suspended"
-                                                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                    onclick="return confirm('Suspend this user?')">
-                                                    <i class="fas fa-ban text-red-500 mr-2"></i>hidden
-                                                </button>
-                                                <?php endif; ?>
+                                        <!-- Status Toggle -->
+                                        <div class="relative">
+                                            <button onclick="toggleDropdown('status-<?php echo $user['id']; ?>')"
+                                                class="text-yellow-600 hover:text-yellow-900 text-sm dropdown-toggle"
+                                                title="Change Status">
+                                                <i class="fas fa-toggle-on"></i>
+                                            </button>
+                                            <div id="status-<?php echo $user['id']; ?>"
+                                                class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                                <form method="POST" action="">
+                                                    <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                                    <div class="hidden">
+                                                        <?php if ($user['status'] !== 'suspended'): ?>
+                                                            <button type="submit" name="update_status" value="suspended"
+                                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                                onclick="return confirm('Suspend this user?')">
+                                                                <i class="fas fa-ban text-red-500 mr-2"></i>hidden
+                                                            </button>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <?php if ($user['status'] !== 'suspended'): ?>
+                                                        <button type="submit" name="update_status" value="suspended"
+                                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                            onclick="return confirm('Suspend this user?')">
+                                                            <i class="fas fa-ban text-red-500 mr-2"></i>Suspend
+                                                        </button>
+                                                    <?php endif; ?>
+
+                                                    <?php if ($user['status'] !== 'inactive'): ?>
+                                                        <button type="submit" name="update_status" value="inactive"
+                                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                            onclick="return confirm('Set user status to Inactive?')">
+                                                            <i class="fas fa-pause-circle text-yellow-500 mr-2"></i>Set Inactive
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <?php if ($user['status'] !== 'active'): ?>
+                                                        <button type="submit" name="update_status" value="active"
+                                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                            onclick="return confirm('Set user status to Active?')">
+                                                            <i class="fas fa-check-circle text-green-500 mr-2"></i>Set Active
+                                                        </button>
+                                                    <?php endif; ?>
+                                                </form>
                                             </div>
-                                            <?php if ($user['status'] !== 'suspended'): ?>
-                                            <button type="submit" name="update_status" value="suspended"
-                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                onclick="return confirm('Suspend this user?')">
-                                                <i class="fas fa-ban text-red-500 mr-2"></i>Suspend
-                                            </button>
-                                            <?php endif; ?>
 
-                                            <?php if ($user['status'] !== 'inactive'): ?>
-                                            <button type="submit" name="update_status" value="inactive"
-                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                onclick="return confirm('Set user status to Inactive?')">
-                                                <i class="fas fa-pause-circle text-yellow-500 mr-2"></i>Set Inactive
-                                            </button>
+                                        </div>
+
+                                        <div class="hidden">
+                                            <!-- Delete Button (only if no events/tickets and not admin) -->
+                                            <?php if ($user['events_count'] == 0 && $user['tickets_count'] == 0 && $user['role'] !== 'admin'): ?>
+
+                                                <form method="POST" action="" class="inline"
+                                                    onsubmit="return confirmDelete('Are you sure you want to delete this user? This action cannot be undone.')">
+                                                    <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                                    <button type="submit" name="delete_user"
+                                                        class="text-red-600 hover:text-red-900 text-sm" title="Delete User">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
                                             <?php endif; ?>
-                                            <?php if ($user['status'] !== 'active'): ?>
-                                            <button type="submit" name="update_status" value="active"
-                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                onclick="return confirm('Set user status to Active?')">
-                                                <i class="fas fa-check-circle text-green-500 mr-2"></i>Set Active
-                                            </button>
-                                            <?php endif; ?>
-                                        </form>
+                                        </div>
                                     </div>
-
-                                </div>
-
-                                <div class="hidden">
-                                    <!-- Delete Button (only if no events/tickets and not admin) -->
-                                    <?php if ($user['events_count'] == 0 && $user['tickets_count'] == 0 && $user['role'] !== 'admin'): ?>
-
-                                    <form method="POST" action="" class="inline"
-                                        onsubmit="return confirmDelete('Are you sure you want to delete this user? This action cannot be undone.')">
-                                        <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                                        <button type="submit" name="delete_user"
-                                            class="text-red-600 hover:text-red-900 text-sm" title="Delete User">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -423,41 +425,41 @@ include '../../includes/admin_header.php';
 
     <!-- Pagination -->
     <?php if ($totalPages > 1): ?>
-    <div class="mt-6 flex justify-center">
-        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            <?php if ($page > 1): ?>
-            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>"
-                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                <span class="sr-only">Previous</span>
-                <i class="fas fa-chevron-left"></i>
-            </a>
-            <?php endif; ?>
+        <div class="mt-6 flex justify-center">
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <?php if ($page > 1): ?>
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>"
+                        class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <span class="sr-only">Previous</span>
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                <?php endif; ?>
 
-            <?php
+                <?php
                 $startPage = max(1, $page - 2);
                 $endPage = min($totalPages, $page + 2);
-                
+
                 for ($i = $startPage; $i <= $endPage; $i++):
                     $isCurrentPage = $i === $page;
-                    $pageClass = $isCurrentPage 
+                    $pageClass = $isCurrentPage
                         ? 'relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-600'
                         : 'relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50';
-                ?>
-            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>"
-                class="<?php echo $pageClass; ?>">
-                <?php echo $i; ?>
-            </a>
-            <?php endfor; ?>
+                    ?>
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>"
+                        class="<?php echo $pageClass; ?>">
+                        <?php echo $i; ?>
+                    </a>
+                <?php endfor; ?>
 
-            <?php if ($page < $totalPages): ?>
-            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>"
-                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                <span class="sr-only">Next</span>
-                <i class="fas fa-chevron-right"></i>
-            </a>
-            <?php endif; ?>
-        </nav>
-    </div>
+                <?php if ($page < $totalPages): ?>
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>"
+                        class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <span class="sr-only">Next</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                <?php endif; ?>
+            </nav>
+        </div>
     <?php endif; ?>
 </div>
 

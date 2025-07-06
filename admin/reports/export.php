@@ -30,11 +30,12 @@ if ($format === 'csv') {
     exportToJSON($reportData);
 }
 
-function generateReportData($startDate, $endDate) {
+function generateReportData($startDate, $endDate)
+{
     global $db;
-    
+
     $data = [];
-    
+
     // Summary Statistics
     $summarySql = "SELECT 
                         (SELECT COUNT(*) FROM users WHERE DATE(created_at) BETWEEN '$startDate' AND '$endDate') as new_users,
@@ -45,7 +46,7 @@ function generateReportData($startDate, $endDate) {
                         (SELECT COUNT(*) FROM withdrawals WHERE DATE(created_at) BETWEEN '$startDate' AND '$endDate') as withdrawal_requests,
                         (SELECT SUM(amount) FROM withdrawals WHERE status = 'completed' AND DATE(created_at) BETWEEN '$startDate' AND '$endDate') as withdrawals_completed";
     $data['summary'] = $db->fetchOne($summarySql);
-    
+
     // Daily Revenue Data
     $revenueSql = "SELECT 
                         DATE(t.created_at) as date,
@@ -58,7 +59,7 @@ function generateReportData($startDate, $endDate) {
                     GROUP BY DATE(t.created_at)
                     ORDER BY date ASC";
     $data['daily_revenue'] = $db->fetchAll($revenueSql);
-    
+
     // Top Events
     $topEventsSql = "SELECT 
                         e.id,
@@ -77,7 +78,7 @@ function generateReportData($startDate, $endDate) {
                     ORDER BY total_revenue DESC
                     LIMIT 20";
     $data['top_events'] = $db->fetchAll($topEventsSql);
-    
+
     // Top Planners
     $topPlannersSql = "SELECT 
                             u.id,
@@ -96,7 +97,7 @@ function generateReportData($startDate, $endDate) {
                         ORDER BY total_revenue DESC
                         LIMIT 20";
     $data['top_planners'] = $db->fetchAll($topPlannersSql);
-    
+
     // User Registration Data
     $userSql = "SELECT 
                     DATE(created_at) as date,
@@ -109,34 +110,35 @@ function generateReportData($startDate, $endDate) {
                 GROUP BY DATE(created_at)
                 ORDER BY date ASC";
     $data['user_registrations'] = $db->fetchAll($userSql);
-    
+
     return $data;
 }
 
-function exportToCSV($data) {
+function exportToCSV($data)
+{
     $output = fopen('php://output', 'w');
-    
+
     // Report Header
-    fputcsv($output, ['Analytics Report']);
-    fputcsv($output, ['Generated on: ' . date('Y-m-d H:i:s')]);
-    fputcsv($output, []);
-    
+    fputcsv($output, ['Analytics Report'], ',', '"', '\\');
+    fputcsv($output, ['Generated on: ' . date('Y-m-d H:i:s')], ',', '"', '\\');
+    fputcsv($output, [], ',', '"', '\\');
+
     // Summary Section
-    fputcsv($output, ['SUMMARY STATISTICS']);
-       fputcsv($output, ['Metric', 'Value']);
-    fputcsv($output, ['New Users', $data['summary']['new_users'] ?? 0]);
-    fputcsv($output, ['New Events', $data['summary']['new_events'] ?? 0]);
-    fputcsv($output, ['Tickets Sold', $data['summary']['tickets_sold'] ?? 0]);
-    fputcsv($output, ['Ticket Revenue', $data['summary']['ticket_revenue'] ?? 0]);
-    fputcsv($output, ['System Fees', $data['summary']['system_fees'] ?? 0]);
-    fputcsv($output, ['Withdrawal Requests', $data['summary']['withdrawal_requests'] ?? 0]);
-    fputcsv($output, ['Withdrawals Completed', $data['summary']['withdrawals_completed'] ?? 0]);
-    fputcsv($output, []);
-    
+    fputcsv($output, ['SUMMARY STATISTICS'], ',', '"', '\\');
+    fputcsv($output, ['Metric', 'Value'], ',', '"', '\\');
+    fputcsv($output, ['New Users', $data['summary']['new_users'] ?? 0], ',', '"', '\\');
+    fputcsv($output, ['New Events', $data['summary']['new_events'] ?? 0], ',', '"', '\\');
+    fputcsv($output, ['Tickets Sold', $data['summary']['tickets_sold'] ?? 0], ',', '"', '\\');
+    fputcsv($output, ['Ticket Revenue', $data['summary']['ticket_revenue'] ?? 0], ',', '"', '\\');
+    fputcsv($output, ['System Fees', $data['summary']['system_fees'] ?? 0], ',', '"', '\\');
+    fputcsv($output, ['Withdrawal Requests', $data['summary']['withdrawal_requests'] ?? 0], ',', '"', '\\');
+    fputcsv($output, ['Withdrawals Completed', $data['summary']['withdrawals_completed'] ?? 0], ',', '"', '\\');
+    fputcsv($output, [], ',', '"', '\\');
+
     // Daily Revenue Section
-    fputcsv($output, ['DAILY REVENUE BREAKDOWN']);
-    fputcsv($output, ['Date', 'Tickets Sold', 'Ticket Revenue', 'System Fees', 'Total Revenue']);
-    
+    fputcsv($output, ['DAILY REVENUE BREAKDOWN'], ',', '"', '\\');
+    fputcsv($output, ['Date', 'Tickets Sold', 'Ticket Revenue', 'System Fees', 'Total Revenue'], ',', '"', '\\');
+
     foreach ($data['daily_revenue'] as $revenue) {
         $totalRevenue = ($revenue['ticket_sales'] ?? 0) + ($revenue['system_fees'] ?? 0);
         fputcsv($output, [
@@ -145,14 +147,14 @@ function exportToCSV($data) {
             $revenue['ticket_sales'] ?? 0,
             $revenue['system_fees'] ?? 0,
             $totalRevenue
-        ]);
+        ], ',', '"', '\\');
     }
-    fputcsv($output, []);
-    
+    fputcsv($output, [], ',', '"', '\\');
+
     // Top Events Section
-    fputcsv($output, ['TOP PERFORMING EVENTS']);
-    fputcsv($output, ['Event ID', 'Event Title', 'Start Date', 'Planner', 'Tickets Sold', 'Total Revenue', 'Avg Ticket Price']);
-    
+    fputcsv($output, ['TOP PERFORMING EVENTS'], ',', '"', '\\');
+    fputcsv($output, ['Event ID', 'Event Title', 'Start Date', 'Planner', 'Tickets Sold', 'Total Revenue', 'Avg Ticket Price'], ',', '"', '\\');
+
     foreach ($data['top_events'] as $event) {
         fputcsv($output, [
             $event['id'],
@@ -162,14 +164,14 @@ function exportToCSV($data) {
             $event['tickets_sold'] ?? 0,
             $event['total_revenue'] ?? 0,
             $event['avg_ticket_price'] ?? 0
-        ]);
+        ], ',', '"', '\\');
     }
-    fputcsv($output, []);
-    
+    fputcsv($output, [], ',', '"', '\\');
+
     // Top Planners Section
-    fputcsv($output, ['TOP EVENT PLANNERS']);
-    fputcsv($output, ['Planner ID', 'Username', 'Email', 'Events Created', 'Tickets Sold', 'Total Revenue']);
-    
+    fputcsv($output, ['TOP EVENT PLANNERS'], ',', '"', '\\');
+    fputcsv($output, ['Planner ID', 'Username', 'Email', 'Events Created', 'Tickets Sold', 'Total Revenue'], ',', '"', '\\');
+
     foreach ($data['top_planners'] as $planner) {
         fputcsv($output, [
             $planner['id'],
@@ -178,14 +180,14 @@ function exportToCSV($data) {
             $planner['events_created'] ?? 0,
             $planner['tickets_sold'] ?? 0,
             $planner['total_revenue'] ?? 0
-        ]);
+        ], ',', '"', '\\');
     }
-    fputcsv($output, []);
-    
+    fputcsv($output, [], ',', '"', '\\');
+
     // User Registration Section
-    fputcsv($output, ['DAILY USER REGISTRATIONS']);
-    fputcsv($output, ['Date', 'Total New Users', 'Customers', 'Event Planners', 'Agents']);
-    
+    fputcsv($output, ['DAILY USER REGISTRATIONS'], ',', '"', '\\');
+    fputcsv($output, ['Date', 'Total New Users', 'Customers', 'Event Planners', 'Agents'], ',', '"', '\\');
+
     foreach ($data['user_registrations'] as $userReg) {
         fputcsv($output, [
             $userReg['date'],
@@ -193,13 +195,14 @@ function exportToCSV($data) {
             $userReg['customers'] ?? 0,
             $userReg['planners'] ?? 0,
             $userReg['agents'] ?? 0
-        ]);
+        ], ',', '"', '\\');
     }
-    
+
     fclose($output);
 }
 
-function exportToJSON($data) {
+function exportToJSON($data)
+{
     // Add metadata
     $export = [
         'report_metadata' => [
@@ -212,7 +215,7 @@ function exportToJSON($data) {
         ],
         'data' => $data
     ];
-    
+
     echo json_encode($export, JSON_PRETTY_PRINT);
 }
 ?>

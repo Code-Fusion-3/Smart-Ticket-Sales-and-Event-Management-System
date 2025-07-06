@@ -26,7 +26,7 @@ $errors = [];
 $success = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $amount = isset($_POST['amount']) ? (float)$_POST['amount'] : 0;
+    $amount = isset($_POST['amount']) ? (float) $_POST['amount'] : 0;
     $paymentMethod = $_POST['payment_method'] ?? '';
     $paymentDetails = $_POST['payment_details'] ?? '';
     
@@ -226,8 +226,8 @@ include '../../includes/planner_header.php';
 
                         <div class="flex justify-end">
                             <button type="submit"
-                                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded <?php echo (int)$balance == 0 ? 'opacity-50 cursor-not-allowed' : ''; ?>"
-                                <?php echo (int)$balance == 0 ? 'disabled' : ''; ?>>
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded <?php echo (int) $balance == 0 ? 'opacity-50 cursor-not-allowed' : ''; ?>"
+                                <?php echo (int) $balance == 0 ? 'disabled' : ''; ?>>
                                 Submit Withdrawal Request
                             </button>
 
@@ -341,7 +341,7 @@ function calculateFee(amount) {
 }
 
 // Calculate fee on page load if amount is pre-filled
-document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
     var amountField = document.getElementById('amount');
     if (amountField.value) {
         calculateFee(amountField.value);
@@ -349,4 +349,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php  ?>
+<?php ?>

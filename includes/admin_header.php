@@ -145,7 +145,7 @@ if (!defined('SITE_URL')) {
                     <div class="border-t border-gray-200 my-3 sm:my-4"></div>
 
                     <a href="<?php echo SITE_URL; ?>/admin/settings.php"
-                        class="sidebar-link flex items-center px-3 sm:px-4 py-2 sm:py-3 text-gray-700 rounded-lg hover:bg-gray-100 text-sm sm:text-base <?php echo (basename($_SERVER['PHP_SELF']) == 'settings.php') ? 'active' : ''; ?>">
+                        class="sidebar-link flex items-center px-3 sm:px-4 py-2 sm:py-3 text-gray-700 rounded-lg hover:bg-gray-100 text-sm sm:text-base hidden <?php echo (basename($_SERVER['PHP_SELF']) == 'settings.php') ? 'active' : ''; ?>">
                         <i class="fas fa-cog mr-2 sm:mr-3 text-sm sm:text-base"></i>
                         <span class="truncate">System Settings</span>
                     </a>

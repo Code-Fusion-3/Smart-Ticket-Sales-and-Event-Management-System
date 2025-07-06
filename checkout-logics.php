@@ -314,13 +314,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                // Record system fee
+                // Record system fee for customer
                 if ($fees > 0) {
                     $feeTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
                         VALUES ($userId, $fees, 'system_fee', 'completed', '$paymentReference', 'Service fee for ticket purchase')");
 
                     if (!$feeTransactionResult) {
                         throw new Exception("Failed to record system fee");
+                    }
+                }
+
+                // Process planner earnings for each event
+                $plannerEarnings = [];
+                foreach ($cartItems as $item) {
+                    $eventId = $item['event_id'];
+                    $quantity = $item['quantity'];
+                    $price = $item['ticket_price'];
+                    $totalAmount = $price * $quantity;
+
+                    // Get event planner ID
+                    $eventSql = "SELECT planner_id FROM events WHERE id = $eventId";
+                    $eventResult = $db->fetchOne($eventSql);
+
+                    if ($eventResult) {
+                        $plannerId = $eventResult['planner_id'];
+
+                        // Calculate planner earnings (total amount minus system fee)
+                        $systemFeePercentage = 5.0; // Get from system_fees table
+                        $systemFeeSql = "SELECT percentage FROM system_fees WHERE fee_type = 'ticket_sale'";
+                        $feeResult = $db->fetchOne($systemFeeSql);
+                        if ($feeResult) {
+                            $systemFeePercentage = $feeResult['percentage'];
+                        }
+
+                        $systemFeeAmount = ($totalAmount * $systemFeePercentage) / 100;
+                        $plannerEarning = $totalAmount - $systemFeeAmount;
+
+                        // Update planner's balance
+                        $updatePlannerBalanceResult = $db->query("UPDATE users SET balance = balance + $plannerEarning WHERE id = $plannerId");
+                        if (!$updatePlannerBalanceResult) {
+                            throw new Exception("Failed to update planner balance");
+                        }
+
+                        // Record sale transaction for planner
+                        $saleTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
+                            VALUES ($plannerId, $plannerEarning, 'sale', 'completed', '$paymentReference', 'Ticket sale for event: " . $db->escape($item['title']) . "')");
+
+                        if (!$saleTransactionResult) {
+                            throw new Exception("Failed to record planner sale transaction");
+                        }
+
+                        // Record system fee transaction for planner
+                        $plannerFeeTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
+                            VALUES ($plannerId, $systemFeeAmount, 'system_fee', 'completed', '$paymentReference', 'Platform fee for ticket sale: " . $db->escape($item['title']) . "')");
+
+                        if (!$plannerFeeTransactionResult) {
+                            throw new Exception("Failed to record planner system fee transaction");
+                        }
+
+                        // Store planner earnings info for notifications
+                        if (!isset($plannerEarnings[$plannerId])) {
+                            $plannerEarnings[$plannerId] = [
+                                'total_earnings' => 0,
+                                'total_fees' => 0,
+                                'events' => []
+                            ];
+                        }
+
+                        $plannerEarnings[$plannerId]['total_earnings'] += $plannerEarning;
+                        $plannerEarnings[$plannerId]['total_fees'] += $systemFeeAmount;
+                        $plannerEarnings[$plannerId]['events'][] = [
+                            'title' => $item['title'],
+                            'quantity' => $quantity,
+                            'amount' => $plannerEarning,
+                            'fee' => $systemFeeAmount
+                        ];
                     }
                 }
 
@@ -485,6 +553,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $totalTickets = count($notificationResults);
 
                 error_log("Notification Summary: $successfulEmails/$totalTickets emails sent, $successfulSMS/$totalTickets SMS sent");
+
+                // Send notifications to planners about their ticket sales
+                foreach ($plannerEarnings as $plannerId => $earnings) {
+                    try {
+                        // Get planner details
+                        $plannerSql = "SELECT username, email FROM users WHERE id = $plannerId";
+                        $planner = $db->fetchOne($plannerSql);
+
+                        if ($planner) {
+                            // Create in-app notification for planner
+                            $plannerNotificationTitle = "Ticket Sales Update";
+                            $plannerNotificationMessage = "You have earned " . formatCurrency($earnings['total_earnings']) . " from recent ticket sales. Check your financial dashboard for details.";
+
+                            $plannerNotificationResult = $db->query("INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                                VALUES ($plannerId, '" . $db->escape($plannerNotificationTitle) . "', '" . $db->escape($plannerNotificationMessage) . "', 'payment', 0, NOW())");
+
+                            if ($plannerNotificationResult) {
+                                error_log("Planner notification created for user: $plannerId");
+                            } else {
+                                error_log("Failed to create planner notification for user: $plannerId");
+                            }
+
+                            // Send email to planner if email function exists
+                            if (function_exists('sendEmail') && !empty($planner['email'])) {
+                                $plannerEmailSubject = "Ticket Sales Update - Earnings Added";
+                                $plannerEmailBody = "
+                                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+                                    <h2 style='color: #6366f1;'>Ticket Sales Update</h2>
+                                    <p>Hello {$planner['username']},</p>
+                                    <p>Great news! You have earned <strong>" . formatCurrency($earnings['total_earnings']) . "</strong> from recent ticket sales.</p>
+                                    
+                                    <div style='background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                                        <h3>Sales Summary:</h3>
+                                        <ul>";
+
+                                foreach ($earnings['events'] as $event) {
+                                    $plannerEmailBody .= "<li>{$event['title']}: {$event['quantity']} ticket(s) - " . formatCurrency($event['amount']) . "</li>";
+                                }
+
+                                $plannerEmailBody .= "
+                                        </ul>
+                                        <p><strong>Total Earnings:</strong> " . formatCurrency($earnings['total_earnings']) . "</p>
+                                        <p><strong>Platform Fees:</strong> " . formatCurrency($earnings['total_fees']) . "</p>
+                                    </div>
+                                    
+                                    <p>The earnings have been added to your account balance. You can view your financial dashboard for more details.</p>
+                                    <p>Thank you for using our platform!</p>
+                                </div>";
+
+                                $plannerEmailResult = sendEmail($planner['email'], $plannerEmailSubject, $plannerEmailBody);
+
+                                if ($plannerEmailResult) {
+                                    error_log("Planner email sent successfully to: " . $planner['email']);
+                                } else {
+                                    error_log("Failed to send planner email to: " . $planner['email']);
+                                }
+                            }
+                        }
+                    } catch (Exception $plannerNotificationError) {
+                        error_log("Planner notification error for planner $plannerId: " . $plannerNotificationError->getMessage());
+                    }
+                }
 
                 // Set success flag
                 $success = true;

@@ -337,7 +337,7 @@ include '../../includes/admin_header.php';
                                 </a>
 
                                 <!-- Status Update Dropdown -->
-                                <div class="relative inline-block text-left">
+                                <div class="hidden inline-block text-left">
                                     <button type="button"
                                         class="text-gray-600 hover:text-gray-900 text-sm dropdown-toggle"
                                         onclick="toggleDropdown('status-dropdown-<?php echo $event['id']; ?>')"
@@ -345,49 +345,6 @@ include '../../includes/admin_header.php';
                                         <i class="fas fa-cog"></i>
                                     </button>
 
-                                    <div id="status-dropdown-<?php echo $event['id']; ?>"
-                                        class="dropdown-menu hidden absolute right-0 z-10 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
-                                        <div class="py-1">
-                                            <?php 
-                                                    // Create a clean return URL
-                                                    $currentPage = basename($_SERVER['PHP_SELF']);
-                                                    $queryString = $_SERVER['QUERY_STRING'];
-                                                    $returnUrl = $currentPage . (!empty($queryString) ? '?' . $queryString : '');
-                                                    ?>
-
-                                            <?php if ($event['status'] !== 'active'): ?>
-                                            <a href="update_status.php?event_id=<?php echo $event['id']; ?>&status=active&return=<?php echo urlencode($returnUrl); ?>"
-                                                class="block px-4 py-2 text-sm text-green-700 hover:bg-green-50"
-                                                onclick="return confirm('Activate this event?')">
-                                                <i class="fas fa-check mr-2"></i>Activate
-                                            </a>
-                                            <?php endif; ?>
-
-                                            <?php if ($event['status'] !== 'suspended'): ?>
-                                            <a href="update_status.php?event_id=<?php echo $event['id']; ?>&status=suspended&return=<?php echo urlencode($returnUrl); ?>"
-                                                class="block px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                                                onclick="return confirm('Suspend this event?')">
-                                                <i class="fas fa-ban mr-2"></i>Suspend
-                                            </a>
-                                            <?php endif; ?>
-
-                                            <?php if ($event['status'] !== 'completed'): ?>
-                                            <a href="update_status.php?event_id=<?php echo $event['id']; ?>&status=completed&return=<?php echo urlencode($returnUrl); ?>"
-                                                class="block px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
-                                                onclick="return confirm('Mark this event as completed?')">
-                                                <i class="fas fa-check-circle mr-2"></i>Complete
-                                            </a>
-                                            <?php endif; ?>
-
-                                            <?php if ($event['status'] !== 'canceled'): ?>
-                                            <a href="update_status.php?event_id=<?php echo $event['id']; ?>&status=canceled&return=<?php echo urlencode($returnUrl); ?>"
-                                                class="block px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50"
-                                                onclick="return confirm('Cancel this event?')">
-                                                <i class="fas fa-times-circle mr-2"></i>Cancel
-                                            </a>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </td>

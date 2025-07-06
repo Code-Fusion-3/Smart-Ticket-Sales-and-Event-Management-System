@@ -122,15 +122,17 @@ include '../../includes/planner_header.php';
             <h1 class="text-3xl font-bold mt-2"><?php echo htmlspecialchars($event['title']); ?></h1>
         </div>
         <div class="flex space-x-2">
-            <a href="events.php?action=edit&id=<?php echo $eventId; ?>" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+            <a href="events.php?action=edit&id=<?php echo $eventId; ?>"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
                 <i class="fas fa-edit mr-2"></i> Edit Event
             </a>
-            <a href="tickets.php?event_id=<?php echo $eventId; ?>" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+            <a href="tickets.php?event_id=<?php echo $eventId; ?>"
+                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
                 <i class="fas fa-ticket-alt mr-2"></i> Manage Tickets
             </a>
         </div>
     </div>
-    
+
     <!-- Event Status Banner -->
     <?php
     $statusClasses = [
@@ -145,55 +147,56 @@ include '../../includes/planner_header.php';
         <div class="flex">
             <div class="flex-shrink-0">
                 <?php if ($event['status'] == 'active'): ?>
-                    <i class="fas fa-check-circle text-green-600"></i>
+                <i class="fas fa-check-circle text-green-600"></i>
                 <?php elseif ($event['status'] == 'completed'): ?>
-                    <i class="fas fa-flag-checkered text-blue-600"></i>
+                <i class="fas fa-flag-checkered text-blue-600"></i>
                 <?php elseif ($event['status'] == 'canceled'): ?>
-                    <i class="fas fa-times-circle text-red-600"></i>
+                <i class="fas fa-times-circle text-red-600"></i>
                 <?php elseif ($event['status'] == 'suspended'): ?>
-                    <i class="fas fa-pause-circle text-yellow-600"></i>
+                <i class="fas fa-pause-circle text-yellow-600"></i>
                 <?php endif; ?>
             </div>
             <div class="ml-3">
                 <p class="text-sm">
                     This event is currently <span class="font-medium"><?php echo ucfirst($event['status']); ?></span>
                     <?php if ($event['status'] == 'active'): ?>
-                        and tickets are available for purchase.
+                    and tickets are available for purchase.
                     <?php elseif ($event['status'] == 'completed'): ?>
-                        and has already taken place.
+                    and has already taken place.
                     <?php elseif ($event['status'] == 'canceled'): ?>
-                        and tickets are no longer available.
+                    and tickets are no longer available.
                     <?php elseif ($event['status'] == 'suspended'): ?>
-                        and ticket sales are temporarily paused.
+                    and ticket sales are temporarily paused.
                     <?php endif; ?>
                 </p>
             </div>
         </div>
     </div>
-    
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Event Details -->
         <div class="lg:col-span-2">
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="relative">
                     <?php if (!empty($event['image'])): ?>
-                        <img src="<?php echo $event['image']; ?>" alt="<?php echo htmlspecialchars($event['title']); ?>" class="w-full h-64 object-cover">
+                    <img src="<?php echo $event['image']; ?>" alt="<?php echo htmlspecialchars($event['title']); ?>"
+                        class="w-full h-64 object-cover">
                     <?php else: ?>
-                        <div class="w-full h-64 bg-gray-200 flex items-center justify-center">
-                            <i class="fas fa-calendar-alt text-6xl text-gray-400"></i>
-                        </div>
+                    <div class="w-full h-64 bg-gray-200 flex items-center justify-center">
+                        <i class="fas fa-calendar-alt text-6xl text-gray-400"></i>
+                    </div>
                     <?php endif; ?>
-                    
+
                     <div class="absolute top-0 right-0 bg-indigo-600 text-white px-4 py-2 m-4 rounded-lg">
                         <div class="text-sm"><?php echo $event['category']; ?></div>
                     </div>
                 </div>
-                
+
                 <div class="p-6">
                     <div class="mb-6">
                         <h2 class="text-xl font-bold mb-2">Event Details</h2>
                         <p class="text-gray-700 mb-4"><?php echo nl2br(htmlspecialchars($event['description'])); ?></p>
-                        
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <h3 class="text-lg font-semibold mb-2">Date & Time</h3>
@@ -201,15 +204,16 @@ include '../../includes/planner_header.php';
                                     <i class="far fa-calendar-alt mr-2 text-indigo-600"></i>
                                     <?php echo formatDate($event['start_date']); ?>
                                     <?php if ($event['start_date'] != $event['end_date']): ?>
-                                        - <?php echo formatDate($event['end_date']); ?>
+                                    - <?php echo formatDate($event['end_date']); ?>
                                     <?php endif; ?>
                                 </p>
                                 <p class="flex items-center text-gray-700 mt-1">
                                     <i class="far fa-clock mr-2 text-indigo-600"></i>
-                                    <?php echo formatTime($event['start_time']); ?> - <?php echo formatTime($event['end_time']); ?>
+                                    <?php echo formatTime($event['start_time']); ?> -
+                                    <?php echo formatTime($event['end_time']); ?>
                                 </p>
                             </div>
-                            
+
                             <div>
                                 <h3 class="text-lg font-semibold mb-2">Location</h3>
                                 <p class="flex items-center text-gray-700">
@@ -218,37 +222,42 @@ include '../../includes/planner_header.php';
                                 </p>
                                 <p class="text-gray-700 mt-1 ml-6">
                                     <?php echo htmlspecialchars($event['address']); ?><br>
-                                    <?php echo htmlspecialchars($event['city']); ?>, <?php echo htmlspecialchars($event['country']); ?>
+                                    <?php echo htmlspecialchars($event['city']); ?>,
+                                    <?php echo htmlspecialchars($event['country']); ?>
                                 </p>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div>
                         <h2 class="text-xl font-bold mb-2">Ticket Types</h2>
                         <?php if (empty($ticketTypes)): ?>
-                            <p class="text-gray-500">No ticket types defined for this event.</p>
+                        <p class="text-gray-500">No ticket types defined for this event.</p>
                         <?php else: ?>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full bg-white">
-                                    <thead>
-                                        <tr>
-                                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Ticket Type
-                                            </th>
-                                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Price
-                                            </th>
-                                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Available
-                                            </th>
-                                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Sold
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($ticketTypes as $type): 
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr>
+                                        <th
+                                            class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Ticket Type
+                                        </th>
+                                        <th
+                                            class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Price
+                                        </th>
+                                        <th
+                                            class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Available
+                                        </th>
+                                        <th
+                                            class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Sold
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($ticketTypes as $type): 
                                             // Get tickets sold for this type
                                             $sql = "SELECT COUNT(*) as count FROM tickets WHERE ticket_type_id = " . $type['id'] . " AND status = 'sold'";
                                             $ticketCount = $db->fetchOne($sql);
@@ -257,54 +266,56 @@ include '../../includes/planner_header.php';
                                             $totalTickets = $type['total_tickets'];
                                             $soldPercentage = ($totalTickets > 0) ? round(($soldTickets / $totalTickets) * 100) : 0;
                                         ?>
-                                            <tr>
-                                                <td class="py-2 px-4 border-b border-gray-200">
-                                                    <div class="text-sm font-medium text-gray-900">
-                                                        <?php echo htmlspecialchars($type['name']); ?>
-                                                    </div>
-                                                    <?php if (!empty($type['description'])): ?>
-                                                        <div class="text-xs text-gray-500">
-                                                            <?php echo htmlspecialchars($type['description']); ?>
-                                                        </div>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="py-2 px-4 border-b border-gray-200">
-                                                    <div class="text-sm text-gray-900">
-                                                        <?php echo formatCurrency($type['price']); ?>
-                                                    </div>
-                                                </td>
-                                                <td class="py-2 px-4 border-b border-gray-200">
-                                                    <div class="text-sm text-gray-900">
-                                                        <?php echo $availableTickets; ?> / <?php echo $totalTickets; ?>
-                                                    </div>
-                                                </td>
-                                                <td class="py-2 px-4 border-b border-gray-200">
-                                                    <div class="text-sm text-gray-900">
-                                                        <?php echo $soldTickets; ?>
-                                                        <span class="text-xs text-gray-500">(<?php echo $soldPercentage; ?>%)</span>
-                                                    </div>
-                                                    <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                                        <div class="bg-indigo-600 h-1.5 rounded-full" style="width: <?php echo $soldPercentage; ?>%"></div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                                    <tr>
+                                        <td class="py-2 px-4 border-b border-gray-200">
+                                            <div class="text-sm font-medium text-gray-900">
+                                                <?php echo htmlspecialchars($type['name']); ?>
+                                            </div>
+                                            <?php if (!empty($type['description'])): ?>
+                                            <div class="text-xs text-gray-500">
+                                                <?php echo htmlspecialchars($type['description']); ?>
+                                            </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="py-2 px-4 border-b border-gray-200">
+                                            <div class="text-sm text-gray-900">
+                                                <?php echo formatCurrency($type['price']); ?>
+                                            </div>
+                                        </td>
+                                        <td class="py-2 px-4 border-b border-gray-200">
+                                            <div class="text-sm text-gray-900">
+                                                <?php echo $availableTickets; ?> / <?php echo $totalTickets; ?>
+                                            </div>
+                                        </td>
+                                        <td class="py-2 px-4 border-b border-gray-200">
+                                            <div class="text-sm text-gray-900">
+                                                <?php echo $soldTickets; ?>
+                                                <span
+                                                    class="text-xs text-gray-500">(<?php echo $soldPercentage; ?>%)</span>
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                                <div class="bg-indigo-600 h-1.5 rounded-full"
+                                                    style="width: <?php echo $soldPercentage; ?>%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- Sales Statistics -->
         <div>
             <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                 <div class="bg-indigo-600 text-white px-6 py-4">
                     <h2 class="text-xl font-bold">Sales Statistics</h2>
                 </div>
-                
+
                 <div class="p-6">
                     <div class="grid grid-cols-2 gap-4 mb-6">
                         <div class="bg-gray-50 p-4 rounded-lg text-center">
@@ -313,7 +324,7 @@ include '../../includes/planner_header.php';
                             </div>
                             <div class="text-sm text-gray-500">Tickets Sold</div>
                         </div>
-                        
+
                         <div class="bg-gray-50 p-4 rounded-lg text-center">
                             <div class="text-3xl font-bold text-green-600">
                                 <?php echo formatCurrency($salesStats['total_revenue'] ?? 0); ?>
@@ -321,7 +332,7 @@ include '../../includes/planner_header.php';
                             <div class="text-sm text-gray-500">Total Revenue</div>
                         </div>
                     </div>
-                    
+
                     <div class="mb-4">
                         <div class="flex justify-between items-center mb-2">
                             <div class="text-sm font-medium text-gray-700">
@@ -337,6 +348,7 @@ include '../../includes/planner_header.php';
                             </div>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-indigo-600 h-2.5 rounded-full" style="width: <?php echo $percentage; ?>%"></div>
+                            <div class="bg-indigo-600 h-2.5 rounded-full" style="width: <?php echo $percentage; ?>%">
+                            </div>
                         </div>
                     </div>
