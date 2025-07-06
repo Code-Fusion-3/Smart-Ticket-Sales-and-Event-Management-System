@@ -381,3 +381,19 @@ CREATE TABLE IF NOT EXISTS sms_logs (
     INDEX idx_status (status),
     INDEX idx_created (created_at)
 );
+
+CREATE TABLE payment_transactions (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    billing_id INT,
+    client_id INT,
+    payment_method VARCHAR(20),
+    amount DECIMAL(10,2),
+    currency VARCHAR(10),
+    status VARCHAR(20),
+    gateway_reference VARCHAR(100),
+    gateway_transaction_id VARCHAR(100),
+    gateway_response TEXT,
+    failure_reason TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

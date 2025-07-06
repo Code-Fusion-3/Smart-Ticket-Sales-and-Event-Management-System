@@ -8,7 +8,6 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 require_once 'includes/notifications.php';
-require_once 'checkout-logics.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 // Load environment variables
@@ -20,38 +19,37 @@ $dotenv->load();
 
 include 'includes/header.php';
 
-if (
-    $_SERVER['REQUEST_METHOD'] === 'POST' &&
-    isset($_POST['payment_method']) &&
-    $_POST['payment_method'] === 'credit_card' &&
-    ($user['balance'] < $total)
-) {
-    // Prepare line items for Stripe
-    $line_items = [];
-    foreach ($cartItems as $item) {
-        $line_items[] = [
-            'price_data' => [
-                'currency' => 'usd',
-                'product_data' => [
-                    'name' => $item['title'] . ' - ' . $item['ticket_name'],
+// Include checkout logic for initial page load and form processing
+include 'checkout-logics.php';
+
+// Process form submission for Stripe redirect
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['payment_method']) && $_POST['payment_method'] === 'credit_card' && ($user['balance'] < $total)) {
+        // Prepare line items for Stripe
+        $line_items = [];
+        foreach ($cartItems as $item) {
+            $line_items[] = [
+                'price_data' => [
+                    'currency' => 'usd',
+                    'product_data' => [
+                        'name' => $item['title'] . ' - ' . $item['ticket_name'],
+                    ],
+                    'unit_amount' => intval($item['ticket_price'] * 100), // Stripe expects cents
                 ],
-                'unit_amount' => intval($item['ticket_price'] * 100), // Stripe expects cents
-            ],
-            'quantity' => $item['quantity'],
-        ];
+                'quantity' => $item['quantity'],
+            ];
+        }
+        
+        $session = \Stripe\Checkout\Session::create([
+            'payment_method_types' => ['card'],
+            'line_items' => $line_items,
+            'mode' => 'payment',
+            'customer_email' => $user['email'],
+            'success_url' => SITE_URL . '/stripe-payment-success.php?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => SITE_URL . '/checkout.php?canceled=1',
+        ]);
+        header('Location: ' . $session->url);
+        exit;
     }
-    
-    $session = \Stripe\Checkout\Session::create([
-        'payment_method_types' => ['card'],
-        'line_items' => $line_items,
-        'mode' => 'payment',
-        'customer_email' => $user['email'],
-        'success_url' => SITE_URL . '/order-confirmation.php?session_id={CHECKOUT_SESSION_ID}',
-        'cancel_url' => SITE_URL . '/checkout.php?canceled=1',
-    ]);
-    header('Location: ' . $session->url);
-    exit;
-}
 ?>
 <!-- Enhanced CSS for better styling -->
 <link rel="stylesheet" href="assets/css/checkout.css">

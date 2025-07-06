@@ -111,9 +111,10 @@ $total = $subtotal + $fees;
 $userSql = "SELECT username, email, phone_number, balance FROM users WHERE id = $userId";
 $user = $db->fetchOne($userSql);
 
-// Process checkout
+// Initialize variables
 $errors = [];
 $success = false;
+$recipientData = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $paymentMethod = $_POST['payment_method'] ?? '';
@@ -171,22 +172,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Process external payment if needed
+        // If credit card payment is selected and there's an amount to charge, redirect to Stripe
+        if ($amountToCharge > 0 && $paymentMethod === 'credit_card') {
+            // Store recipient data in session for Stripe payment success handler
+            $_SESSION['stripe_recipient_data'] = $recipientData;
+            $_SESSION['stripe_cart_items'] = $cartItems;
+            $_SESSION['stripe_total'] = $total;
+            $_SESSION['stripe_subtotal'] = $subtotal;
+            $_SESSION['stripe_fees'] = $fees;
+            $_SESSION['stripe_balance_used'] = $balanceUsed;
+
+            // Redirect to Stripe checkout (this will be handled by checkout.php)
+            // The actual Stripe session creation happens in checkout.php
+            return; // Exit early, let checkout.php handle the Stripe redirect
+        }
+
+        // Process external payment if needed (for mobile money and other methods)
         $paymentSuccess = true;
         $paymentReference = generateRandomString(12);
 
         if ($amountToCharge > 0) {
             // Validate payment details based on method
-            if ($paymentMethod === 'credit_card') {
-                $cardNumber = $_POST['card_number'] ?? '';
-                $cardName = $_POST['card_name'] ?? '';
-                $cardCvv = $_POST['card_cvv'] ?? '';
-
-                if (empty($cardNumber) || empty($cardName) || empty($cardCvv)) {
-                    $errors[] = "Please fill in all credit card details.";
-                    $paymentSuccess = false;
-                }
-            } elseif ($paymentMethod === 'mobile_money') {
+            if ($paymentMethod === 'mobile_money') {
                 $mobileNumber = $_POST['mobile_number'] ?? '';
                 if (empty($mobileNumber)) {
                     $errors[] = "Please enter your mobile number.";
