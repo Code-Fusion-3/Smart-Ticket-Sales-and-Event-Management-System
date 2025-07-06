@@ -95,6 +95,7 @@ CREATE TABLE withdrawals (
     net_amount DECIMAL(10, 2) NOT NULL,
     payment_method VARCHAR(50) NOT NULL,
     payment_details TEXT,
+    admin_notes TEXT,
     status ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

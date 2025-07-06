@@ -10,15 +10,15 @@ checkPermission('admin');
 
 // Handle withdrawal status updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
-    $withdrawalId = (int)$_POST['withdrawal_id'];
+    $withdrawalId = (int) $_POST['withdrawal_id'];
     $newStatus = $_POST['update_status'];
     $adminNotes = $_POST['admin_notes'] ?? '';
-    
+
     if (in_array($newStatus, ['approved', 'rejected', 'completed'])) {
         // Get withdrawal details
         $sql = "SELECT * FROM withdrawals WHERE id = $withdrawalId";
         $withdrawal = $db->fetchOne($sql);
-        
+
         if ($withdrawal) {
             // Update withdrawal status
             $sql = "UPDATE withdrawals SET 
@@ -26,19 +26,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
                         admin_notes = '" . $db->escape($adminNotes) . "',
                         updated_at = NOW() 
                     WHERE id = $withdrawalId";
-            
+
             if ($db->query($sql)) {
                 // If rejected, refund the amount to user's balance
                 if ($newStatus === 'rejected') {
                     $refundSql = "UPDATE users SET balance = balance + {$withdrawal['amount']} WHERE id = {$withdrawal['user_id']}";
                     $db->query($refundSql);
-                    
+
                     // Create a transaction record for the refund
                     $refundTransactionSql = "INSERT INTO transactions (user_id, amount, type, status, description) 
                                            VALUES ({$withdrawal['user_id']}, {$withdrawal['amount']}, 'deposit', 'completed', 'Withdrawal refund - Request #{$withdrawalId} rejected')";
                     $db->query($refundTransactionSql);
                 }
-                
+
                 $_SESSION['success_message'] = "Withdrawal request updated successfully";
             } else {
                 $_SESSION['error_message'] = "Failed to update withdrawal request";
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
 }
 
 // Pagination
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $perPage = 20;
 $offset = ($page - 1) * $perPage;
 
@@ -98,15 +98,15 @@ $withdrawals = $db->fetchAll($sql);
 // Get withdrawal statistics
 $statsSql = "SELECT 
                 COUNT(*) as total_count,
-                SUM(amount) as total_amount,
-                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,
-                SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount,
-                COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_count,
-                SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END) as approved_amount,
-                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_count,
-                SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as completed_amount,
-                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count,
-                SUM(CASE WHEN status = 'rejected' THEN amount ELSE 0 END) as rejected_amount
+                SUM(w.amount) as total_amount,
+                COUNT(CASE WHEN w.status = 'pending' THEN 1 END) as pending_count,
+                SUM(CASE WHEN w.status = 'pending' THEN w.amount ELSE 0 END) as pending_amount,
+                COUNT(CASE WHEN w.status = 'approved' THEN 1 END) as approved_count,
+                SUM(CASE WHEN w.status = 'approved' THEN w.amount ELSE 0 END) as approved_amount,
+                COUNT(CASE WHEN w.status = 'completed' THEN 1 END) as completed_count,
+                SUM(CASE WHEN w.status = 'completed' THEN w.amount ELSE 0 END) as completed_amount,
+                COUNT(CASE WHEN w.status = 'rejected' THEN 1 END) as rejected_count,
+                SUM(CASE WHEN w.status = 'rejected' THEN w.amount ELSE 0 END) as rejected_amount
              FROM withdrawals w
              JOIN users u ON w.user_id = u.id
              $whereClause";
@@ -137,13 +137,15 @@ include '../../includes/admin_header.php';
     <!-- Success/Error Messages -->
     <?php if (isset($_SESSION['success_message'])): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 alert-auto-hide">
-        <?php echo $_SESSION['success_message']; unset($_SESSION['success_message']); ?>
+        <?php echo $_SESSION['success_message'];
+            unset($_SESSION['success_message']); ?>
     </div>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['error_message'])): ?>
     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6 alert-auto-hide">
-        <?php echo $_SESSION['error_message']; unset($_SESSION['error_message']); ?>
+        <?php echo $_SESSION['error_message'];
+            unset($_SESSION['error_message']); ?>
     </div>
     <?php endif; ?>
 
@@ -282,24 +284,27 @@ include '../../includes/admin_header.php';
 
                         <td class="px-4 py-3">
                             <div class="text-sm font-medium text-gray-900">
-                                <?php echo htmlspecialchars($withdrawal['username']); ?></div>
+                                <?php echo htmlspecialchars($withdrawal['username']); ?>
+                            </div>
                             <div class="text-xs text-gray-500"><?php echo htmlspecialchars($withdrawal['email']); ?>
                             </div>
                         </td>
 
                         <td class="px-4 py-3">
                             <div class="text-sm font-medium text-gray-900">
-                                <?php echo formatCurrency($withdrawal['amount']); ?></div>
+                                <?php echo formatCurrency($withdrawal['amount']); ?>
+                            </div>
                             <div class="text-xs text-gray-500">Fee: <?php echo formatCurrency($withdrawal['fee']); ?>
                             </div>
                             <div class="text-xs text-green-600">Net:
-                                <?php echo formatCurrency($withdrawal['net_amount']); ?></div>
+                                <?php echo formatCurrency($withdrawal['net_amount']); ?>
+                            </div>
                         </td>
 
                         <td class="px-4 py-3">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                        <?php 
-                                        switch($withdrawal['status']) {
+                                        <?php
+                                        switch ($withdrawal['status']) {
                                             case 'pending':
                                                 echo 'bg-yellow-100 text-yellow-800';
                                                 break;
@@ -322,7 +327,8 @@ include '../../includes/admin_header.php';
 
                         <td class="px-4 py-3 hidden lg:table-cell">
                             <div class="text-sm text-gray-900">
-                                <?php echo ucfirst(str_replace('_', ' ', $withdrawal['payment_method'])); ?></div>
+                                <?php echo ucfirst(str_replace('_', ' ', $withdrawal['payment_method'])); ?>
+                            </div>
                         </td>
 
                         <td class="px-4 py-3 hidden sm:table-cell">
@@ -396,35 +402,35 @@ include '../../includes/admin_header.php';
                 // Display page numbers
                 $startPage = max(1, $page - 2);
                 $endPage = min($totalPages, $page + 2);
-                
+
                 // Always show first page
                 if ($startPage > 1) {
                     echo '<a href="?' . http_build_query(array_merge($_GET, ['page' => 1])) . '" 
                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
                             1
                           </a>';
-                    
+
                     if ($startPage > 2) {
                         echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
                                 ...
                               </span>';
                     }
                 }
-                
+
                 // Page numbers
                 for ($i = $startPage; $i <= $endPage; $i++) {
                     $isCurrentPage = $i === $page;
-                    $pageClass = $isCurrentPage 
+                    $pageClass = $isCurrentPage
                         ? 'relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-600'
                         : 'relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50';
-                    
+
                     if ($isCurrentPage) {
                         echo '<span class="' . $pageClass . '">' . $i . '</span>';
                     } else {
                         echo '<a href="?' . http_build_query(array_merge($_GET, ['page' => $i])) . '" class="' . $pageClass . '">' . $i . '</a>';
                     }
                 }
-                
+
                 // Always show last page
                 if ($endPage < $totalPages) {
                     if ($endPage < $totalPages - 1) {
@@ -432,7 +438,7 @@ include '../../includes/admin_header.php';
                                 ...
                               </span>';
                     }
-                    
+
                     echo '<a href="?' . http_build_query(array_merge($_GET, ['page' => $totalPages])) . '" 
                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
                             ' . $totalPages . '

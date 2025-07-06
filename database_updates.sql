@@ -225,5 +225,8 @@ CREATE TABLE IF NOT EXISTS event_analytics (
     INDEX idx_date (date)
 );
 
+-- 21. Add admin_notes column to withdrawals table for admin comments
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_notes TEXT AFTER payment_details;
+
 -- Show completion message
 SELECT 'Database updates completed successfully!' as status; 
