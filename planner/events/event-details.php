@@ -126,7 +126,7 @@ include '../../includes/planner_header.php';
                 class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
                 <i class="fas fa-edit mr-2"></i> Edit Event
             </a>
-            <a href="tickets.php?event_id=<?php echo $eventId; ?>"
+            <a href="../tickets/tickets.php?event_id=<?php echo $eventId; ?>"
                 class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
                 <i class="fas fa-ticket-alt mr-2"></i> Manage Tickets
             </a>

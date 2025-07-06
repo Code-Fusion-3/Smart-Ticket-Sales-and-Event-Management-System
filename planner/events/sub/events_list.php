@@ -125,9 +125,9 @@
                         </div>
                         <?php endif; ?>
                     </td>
-                   
-<td class="py-4 px-4 border-b border-gray-200">
-    <?php
+
+                    <td class="py-4 px-4 border-b border-gray-200">
+                        <?php
     // Calculate actual status based on date
     $currentDateTime = new DateTime();
     $eventDateTime = new DateTime($event['start_date'] . ' ' . ($event['start_time'] ?? '00:00:00'));
@@ -149,13 +149,14 @@
     ];
     $statusClass = $statusClasses[$actualStatus] ?? 'bg-gray-100 text-gray-800';
     ?>
-    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusClass; ?>">
-        <?php echo ucfirst($actualStatus); ?>
-        <?php if ($actualStatus !== $event['status']): ?>
-            <span class="ml-1 text-xs opacity-75">(Auto)</span>
-        <?php endif; ?>
-    </span>
-</td>
+                        <span
+                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $statusClass; ?>">
+                            <?php echo ucfirst($actualStatus); ?>
+                            <?php if ($actualStatus !== $event['status']): ?>
+                            <span class="ml-1 text-xs opacity-75">(Auto)</span>
+                            <?php endif; ?>
+                        </span>
+                    </td>
 
                     <td class="py-4 px-4 border-b border-gray-200 text-sm">
                         <a href="?action=edit&id=<?php echo $event['id']; ?>"
@@ -166,7 +167,7 @@
                             class="text-blue-600 hover:text-blue-900 mr-3">
                             <i class="fas fa-eye"></i> View
                         </a>
-                        <a href="tickets.php?event_id=<?php echo $event['id']; ?>"
+                        <a href="../tickets/tickets.php?event_id=<?php echo $event['id']; ?>"
                             class="text-green-600 hover:text-green-900">
                             <i class="fas fa-ticket-alt"></i> Tickets
                         </a>

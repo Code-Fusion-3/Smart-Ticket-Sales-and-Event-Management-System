@@ -311,13 +311,7 @@ if ($action == 'list') {
                                 <i class="fas fa-eye"></i> View
                             </a>
 
-                            <?php if ($ticket['status'] == 'sold'): ?>
-                            <a href="?action=mark_used&id=<?php echo $ticket['id']; ?><?php echo $eventId ? '&event_id=' . $eventId : ''; ?>"
-                                class="text-blue-600 hover:text-blue-900"
-                                onclick="return confirm('Mark this ticket as used?')">
-                                <i class="fas fa-check-circle"></i> Mark Used
-                            </a>
-                            <?php endif; ?>
+
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -427,28 +421,7 @@ if ($action == 'list') {
         <?php endif; ?>
     </div>
 
-    <!-- Export Options -->
-    <?php if (!empty($tickets)): ?>
-    <div class="mt-6 bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-lg font-bold mb-4">Export Options</h2>
-        <div class="flex flex-wrap gap-4">
-            <a href="export.php?type=csv<?php echo $eventId ? '&event_id=' . $eventId : ''; ?>&status=<?php echo $status; ?>&search=<?php echo urlencode($search); ?>"
-                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                <i class="fas fa-file-csv mr-2"></i> Export to CSV
-            </a>
 
-            <a href="export.php?type=excel<?php echo $eventId ? '&event_id=' . $eventId : ''; ?>&status=<?php echo $status; ?>&search=<?php echo urlencode($search); ?>"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                <i class="fas fa-file-excel mr-2"></i> Export to Excel
-            </a>
-
-            <a href="export.php?type=pdf<?php echo $eventId ? '&event_id=' . $eventId : ''; ?>&status=<?php echo $status; ?>&search=<?php echo urlencode($search); ?>"
-                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-                <i class="fas fa-file-pdf mr-2"></i> Export to PDF
-            </a>
-        </div>
-    </div>
-    <?php endif; ?>
 </div>
 
 <?php
@@ -503,18 +476,6 @@ if ($action == 'list') {
         </div>
 
         <div class="flex space-x-2">
-            <?php if ($ticket['status'] == 'sold'): ?>
-            <a href="?action=mark_used&id=<?php echo $ticketId; ?><?php echo $eventId ? '&event_id=' . $eventId : ''; ?>"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                onclick="return confirm('Mark this ticket as used?')">
-                <i class="fas fa-check-circle mr-2"></i> Mark as Used
-            </a>
-            <?php endif; ?>
-
-            <a href="print-ticket.php?id=<?php echo $ticketId; ?>" target="_blank"
-                class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                <i class="fas fa-print mr-2"></i> Print Ticket
-            </a>
         </div>
     </div>
 
@@ -649,58 +610,6 @@ if ($action == 'list') {
             </div>
         </div>
 
-        <!-- QR Code and Actions -->
-        <div>
-            <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                <div class="bg-indigo-600 text-white px-6 py-4">
-                    <h2 class="text-xl font-bold">Ticket QR Code</h2>
-                </div>
-
-                <div class="p-6 text-center">
-                    <?php if (!empty($ticket['qr_code'])): ?>
-                    <img src="<?php echo SITE_URL . '/' . $ticket['qr_code']; ?>" alt="Ticket QR Code"
-                        class="mx-auto max-w-full h-auto">
-                    <?php else: ?>
-                    <div class="bg-gray-100 p-8 rounded-lg">
-                        <i class="fas fa-qrcode text-gray-400 text-6xl mb-2"></i>
-                        <p class="text-gray-500">QR code not generated</p>
-                    </div>
-                    <?php endif; ?>
-
-                    <p class="text-sm text-gray-500 mt-2">
-                        Scan this QR code at the event entrance for verification.
-                    </p>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="bg-indigo-600 text-white px-6 py-4">
-                    <h2 class="text-xl font-bold">Actions</h2>
-                </div>
-
-                <div class="p-6">
-                    <div class="space-y-3">
-                        <a href="print-ticket.php?id=<?php echo $ticketId; ?>" target="_blank"
-                            class="block w-full bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 border border-gray-300 rounded-md text-center transition duration-150">
-                            <i class="fas fa-print mr-2"></i> Print Ticket
-                        </a>
-
-                        <a href="email-ticket.php?id=<?php echo $ticketId; ?>"
-                            class="block w-full bg-white hover:bg-gray-50 text-indigo-600 font-medium py-2 px-4 border border-indigo-600 rounded-md text-center transition duration-150">
-                            <i class="fas fa-envelope mr-2"></i> Email Ticket
-                        </a>
-
-                        <?php if ($ticket['status'] == 'sold'): ?>
-                        <a href="?action=mark_used&id=<?php echo $ticketId; ?><?php echo $eventId ? '&event_id=' . $eventId : ''; ?>"
-                            class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md text-center transition duration-150"
-                            onclick="return confirm('Mark this ticket as used?')">
-                            <i class="fas fa-check-circle mr-2"></i> Mark as Used
-                        </a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 

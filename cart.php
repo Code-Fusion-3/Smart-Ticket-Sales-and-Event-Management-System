@@ -4,6 +4,7 @@ require_once 'includes/config.php';
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
+require_once 'includes/cart_functions.php';
 
 // Check if user is logged in
 if (!isLoggedIn()) {
@@ -57,9 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($quantity > $availableTickets) {
                     $_SESSION['error_message'] = "Sorry, only $availableTickets tickets available for " . htmlspecialchars($cartItem['ticket_name']) . " in " . htmlspecialchars($cartItem['event_title']);
                 } else {
-                    // Update quantity
-                    $affectedRows = $db->update("UPDATE cart_items SET quantity = $quantity, updated_at = NOW() WHERE id = $itemId AND cart_id = $cartId");
-                    if ($affectedRows > 0) {
+                    // Update quantity using cart function
+                    if (updateCartItemQuantity($userId, $itemId, $quantity)) {
                         $_SESSION['success_message'] = "Cart updated successfully.";
                     } else {
                         $_SESSION['error_message'] = "Failed to update cart.";
@@ -75,9 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Remove item
     if (isset($_POST['remove_item'])) {
         $itemId = (int) $_POST['item_id'];
-        $affectedRows = $db->update("DELETE FROM cart_items WHERE id = $itemId AND cart_id = $cartId");
 
-        if ($affectedRows > 0) {
+        if (removeFromCart($userId, $itemId)) {
             $_SESSION['success_message'] = "Item removed from cart.";
         } else {
             $_SESSION['error_message'] = "Failed to remove item from cart.";
@@ -87,9 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Clear cart
     if (isset($_POST['clear_cart'])) {
-        $affectedRows = $db->update("DELETE FROM cart_items WHERE cart_id = $cartId");
-
-        if ($affectedRows > 0) {
+        if (clearCart($userId)) {
             $_SESSION['success_message'] = "Cart cleared successfully.";
         } else {
             $_SESSION['error_message'] = "Failed to clear cart.";
@@ -192,6 +189,13 @@ include 'includes/header.php';
         <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-6">
             <i class="fas fa-exclamation-triangle mr-2"></i><?php echo $_SESSION['warning_message'];
             unset($_SESSION['warning_message']); ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['info_message'])): ?>
+        <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-6">
+            <i class="fas fa-info-circle mr-2"></i><?php echo $_SESSION['info_message'];
+            unset($_SESSION['info_message']); ?>
         </div>
     <?php endif; ?>
 
@@ -354,7 +358,8 @@ include 'includes/header.php';
                                                     <!-- Remove Button -->
                                                     <form method="POST" action="" class="inline">
                                                         <input type="hidden" name="item_id" value="<?php echo $item['id']; ?>">
-                                                        <button type="submit" name="remove_item"
+                                                        <input type="hidden" name="remove_item" value="1">
+                                                        <button type="submit"
                                                             class="text-red-600 hover:text-red-800 text-sm font-medium transition duration-200"
                                                             onclick="return confirm('Are you sure you want to remove this item from your cart?')">
                                                             <i class="fas fa-trash-alt mr-1"></i> Remove
@@ -372,7 +377,8 @@ include 'includes/header.php';
                         <div class="mt-8 pt-6 border-t border-gray-200">
                             <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
                                 <form method="POST" action="">
-                                    <button type="submit" name="clear_cart"
+                                    <input type="hidden" name="clear_cart" value="1">
+                                    <button type="submit"
                                         class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg transition duration-300"
                                         onclick="return confirm('Are you sure you want to clear your entire cart?')">
                                         <i class="fas fa-trash mr-2"></i> Clear Cart
