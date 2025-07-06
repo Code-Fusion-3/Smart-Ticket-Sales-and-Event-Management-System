@@ -175,15 +175,7 @@ try {
             }
         }
 
-        // Record system fee for customer
-        if ($fees > 0) {
-            $feeTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
-                VALUES ($userId, $fees, 'system_fee', 'completed', '$sessionId', 'Service fee for ticket purchase')");
 
-            if (!$feeTransactionResult) {
-                throw new Exception("Failed to record system fee");
-            }
-        }
 
         // Process planner earnings for each event
         $plannerEarnings = [];

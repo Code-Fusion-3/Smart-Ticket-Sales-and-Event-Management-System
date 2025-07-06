@@ -223,17 +223,10 @@ include 'includes/header.php';
                                     <td class="px-4 py-3 text-right font-medium">
                                         <?php echo formatCurrency($totalAmount); ?></td>
                                 </tr>
-                                <?php if ($serviceFee > 0): ?>
-                                <tr>
-                                    <td colspan="3" class="px-4 py-3 text-right font-medium">Service Fee</td>
-                                    <td class="px-4 py-3 text-right font-medium">
-                                        <?php echo formatCurrency($serviceFee); ?></td>
-                                </tr>
-                                <?php endif; ?>
                                 <tr class="bg-gray-50">
                                     <td colspan="3" class="px-4 py-3 text-right font-bold">Total</td>
                                     <td class="px-4 py-3 text-right font-bold">
-                                        <?php echo formatCurrency($totalAmount + $serviceFee); ?></td>
+                                        <?php echo formatCurrency($totalAmount); ?></td>
                                 </tr>
                             </tfoot>
                         </table>

@@ -206,10 +206,7 @@ include 'includes/header.php';
                                     <i class="fas fa-download mr-2"></i> Download
                                 </a>
 
-                                <a href="email-ticket.php?id=<?php echo $ticketId; ?>"
-                                    class="block w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                                    <i class="fas fa-envelope mr-2"></i> Email Ticket
-                                </a>
+
 
                                 <?php if ($ticket['status'] === 'sold' && $eventStatus !== 'past'): ?>
                                 <a href="resell-ticket.php?id=<?php echo $ticketId; ?>"

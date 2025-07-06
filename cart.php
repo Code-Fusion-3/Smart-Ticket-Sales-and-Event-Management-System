@@ -434,31 +434,11 @@ include 'includes/header.php';
                                 <span class="font-medium"><?php echo formatCurrency($totalAmount); ?></span>
                             </div>
 
-                            <?php
-                            // Calculate fees if applicable
-                            $fees = 0;
-                            $feePercentage = 0;
-                            $feesSql = "SELECT percentage FROM system_fees WHERE fee_type = 'ticket_sale'";
-                            $feesResult = $db->fetchOne($feesSql);
-                            if ($feesResult) {
-                                $feePercentage = $feesResult['percentage'];
-                                $fees = ($totalAmount * $feePercentage) / 100;
-                            }
-                            $finalTotal = $totalAmount + $fees;
-                            ?>
-
-                            <?php if ($fees > 0): ?>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Service Fee (<?php echo $feePercentage; ?>%)</span>
-                                    <span class="font-medium"><?php echo formatCurrency($fees); ?></span>
-                                </div>
-                            <?php endif; ?>
-
                             <div class="border-t border-gray-200 pt-3">
                                 <div class="flex justify-between items-center">
                                     <span class="text-lg font-bold text-gray-900">Total</span>
                                     <span
-                                        class="text-2xl font-bold text-indigo-600"><?php echo formatCurrency($finalTotal); ?></span>
+                                        class="text-2xl font-bold text-indigo-600"><?php echo formatCurrency($totalAmount); ?></span>
                                 </div>
                             </div>
                         </div>

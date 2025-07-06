@@ -13,7 +13,7 @@ if (!isLoggedIn()) {
 }
 
 $userId = getCurrentUserId();
-$ticketId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$ticketId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
 if ($ticketId <= 0) {
     $_SESSION['error_message'] = "Invalid ticket ID.";
@@ -21,7 +21,7 @@ if ($ticketId <= 0) {
 }
 
 // Get ticket details with event information
-$sql = "SELECT t.*, e.title as event_title, e.start_date, e.start_time, e.venue, e.city, e.status as event_status,
+$sql = "SELECT t.*, e.title as event_title, e.start_date, e.start_time, e.end_date, e.end_time, e.venue, e.city, e.status as event_status,
                tt.name as ticket_type_name, tt.price as original_price,
                tr.id as resale_id, tr.resale_price, tr.status as resale_status
         FROM tickets t
@@ -41,10 +41,26 @@ if (!$ticket) {
 $errors = [];
 $canResell = true;
 
-// Check if event has already started
-if (strtotime($ticket['start_date'] . ' ' . $ticket['start_time']) <= time()) {
-    $errors[] = "Cannot resell tickets for events that have already started.";
-    $canResell = false;
+// Check event timing based on event duration
+$startDateTime = strtotime($ticket['start_date'] . ' ' . $ticket['start_time']);
+$endDateTime = strtotime($ticket['end_date'] . ' ' . $ticket['end_time']);
+$currentTime = time();
+
+// Determine if it's a single-day or multi-day event
+$isSingleDayEvent = ($ticket['start_date'] === $ticket['end_date']);
+
+if ($isSingleDayEvent) {
+    // Single-day event: No resale if event has already started
+    if ($currentTime >= $startDateTime) {
+        $errors[] = "Cannot resell tickets for single-day events that have already started.";
+        $canResell = false;
+    }
+} else {
+    // Multi-day event: No resale if the last day has passed
+    if ($currentTime >= $endDateTime) {
+        $errors[] = "Cannot resell tickets for multi-day events that have ended.";
+        $canResell = false;
+    }
 }
 
 // Check if event is active
@@ -68,50 +84,48 @@ if ($ticket['status'] === 'used') {
 // Get resale fee percentage
 $resaleFeeQuery = "SELECT percentage FROM system_fees WHERE fee_type = 'resale'";
 $resaleFeeResult = $db->fetchOne($resaleFeeQuery);
-$resaleFeePercentage = $resaleFeeResult ? $resaleFeeResult['percentage'] : 3.0;
+$resaleFeePercentage = $resaleFeeResult ? $resaleFeeResult['percentage'] : 25.0;
 
-// Calculate maximum resale price (75% cap)
+// Calculate maximum resale price (100% of original price)
 $originalPrice = $ticket['original_price'] ?? $ticket['purchase_price'];
-$maxResalePrice = $originalPrice * 0.75;
+$maxResalePrice = $originalPrice;
 
 // Process resale listing
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['list_for_resale']) && $canResell) {
-    $resalePrice = (float)$_POST['resale_price'];
+    $resalePrice = (float) $_POST['resale_price'];
     $description = trim($_POST['description'] ?? '');
-    
-    // Validate resale price
-    if ($resalePrice <= 0) {
-        $errors[] = "Please enter a valid resale price.";
-    } elseif ($resalePrice > $maxResalePrice) {
-        $errors[] = "Resale price cannot exceed 75% of the original price (" . formatCurrency($maxResalePrice) . ").";
+
+    // Validate resale price (fixed at original price)
+    if ($resalePrice != $originalPrice) {
+        $errors[] = "Resale price must be exactly the original price.";
     }
-    
-    // Calculate platform fee and seller earnings
+
+    // Calculate platform fee and seller earnings (25% system fee)
     $platformFee = ($resalePrice * $resaleFeePercentage) / 100;
     $sellerEarnings = $resalePrice - $platformFee;
-    
+
     if (empty($errors)) {
         try {
             $db->query("START TRANSACTION");
-            
+
             // Update ticket status to reselling
             $updateTicketSql = "UPDATE tickets SET status = 'reselling' WHERE id = $ticketId";
             $db->query($updateTicketSql);
-            
+
             // Create resale listing
             $insertResaleSql = "INSERT INTO ticket_resales (ticket_id, seller_id, resale_price, platform_fee, seller_earnings, description, status, listed_at)
                                VALUES ($ticketId, $userId, $resalePrice, $platformFee, $sellerEarnings, '" . $db->escape($description) . "', 'active', NOW())";
             $resaleId = $db->insert($insertResaleSql);
-            
+
             // Create notification
             // createNotification($userId, "Ticket Listed for Resale", 
             //     "Your ticket for '" . $ticket['event_title'] . "' has been listed for resale at " . formatCurrency($resalePrice) . ".", 'ticket');
             displaySuccess("Your ticket for has been listed for resale  ");
             $db->query("COMMIT");
-            
+
             $_SESSION['success_message'] = "Your ticket has been successfully listed for resale!";
             redirect('marketplace.php');
-            
+
         } catch (Exception $e) {
             $db->query("ROLLBACK");
             error_log("Resale listing error: " . $e->getMessage());
@@ -161,20 +175,37 @@ include 'includes/header.php';
                         </div>
                         <div class="flex-1">
                             <h3 class="text-xl font-bold text-gray-900">
-                                <?php echo htmlspecialchars($ticket['event_title']); ?></h3>
+                                <?php echo htmlspecialchars($ticket['event_title']); ?>
+                            </h3>
                             <p class="text-gray-600 mt-1">
-                                <?php echo htmlspecialchars($ticket['ticket_type_name'] ?? 'Standard Ticket'); ?></p>
+                                <?php echo htmlspecialchars($ticket['ticket_type_name'] ?? 'Standard Ticket'); ?>
+                            </p>
 
                             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <div class="text-sm text-gray-500">Date & Time</div>
-                                    <div class="font-medium"><?php echo formatDate($ticket['start_date']); ?> at
-                                        <?php echo formatTime($ticket['start_time']); ?></div>
+                                    <div class="text-sm text-gray-500">Event Duration</div>
+                                    <div class="font-medium">
+                                        <?php if ($isSingleDayEvent): ?>
+                                        Single Day: <?php echo formatDate($ticket['start_date']); ?><br>
+                                        <span class="text-sm text-gray-600">
+                                            <?php echo formatTime($ticket['start_time']); ?> -
+                                            <?php echo formatTime($ticket['end_time']); ?>
+                                        </span>
+                                        <?php else: ?>
+                                        Multi-Day: <?php echo formatDate($ticket['start_date']); ?> to
+                                        <?php echo formatDate($ticket['end_date']); ?><br>
+                                        <span class="text-sm text-gray-600">
+                                            <?php echo formatTime($ticket['start_time']); ?> -
+                                            <?php echo formatTime($ticket['end_time']); ?>
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 <div>
                                     <div class="text-sm text-gray-500">Venue</div>
                                     <div class="font-medium"><?php echo htmlspecialchars($ticket['venue']); ?>,
-                                        <?php echo htmlspecialchars($ticket['city']); ?></div>
+                                        <?php echo htmlspecialchars($ticket['city']); ?>
+                                    </div>
                                 </div>
                                 <div>
                                     <div class="text-sm text-gray-500">Original Price</div>
@@ -199,18 +230,18 @@ include 'includes/header.php';
 
                 <form method="POST" action="" class="p-6">
                     <div class="mb-6">
-                        <label for="resale_price" class="block text-sm font-medium text-gray-700 mb-2">
-                            Resale Price <span class="text-red-500">*</span>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Resale Price
                         </label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rwf</span>
-                            <input type="number" id="resale_price" name="resale_price" min="1"
-                                max="<?php echo $maxResalePrice; ?>" step="0.01"
-                                class="w-full pl-12 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                placeholder="Enter resale price" required>
+                            <input type="number" id="resale_price" name="resale_price"
+                                value="<?php echo $originalPrice; ?>"
+                                class="w-full pl-12 pr-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                                readonly>
                         </div>
                         <p class="text-sm text-gray-600 mt-1">
-                            Maximum allowed: <?php echo formatCurrency($maxResalePrice); ?> (75% of original price)
+                            Fixed at original price: <?php echo formatCurrency($originalPrice); ?>
                         </p>
                     </div>
 
@@ -228,17 +259,21 @@ include 'includes/header.php';
                         <h4 class="font-semibold text-gray-900 mb-3">Pricing Breakdown</h4>
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
-                                <span>Resale Price:</span>
-                                <span id="display-resale-price">Rwf 0.00</span>
+                                <span>List Price:</span>
+                                <span><?php echo formatCurrency($originalPrice); ?></span>
                             </div>
                             <div class="flex justify-between text-red-600">
-                                <span>Platform Fee (<?php echo $resaleFeePercentage; ?>%):</span>
-                                <span id="display-platform-fee">-Rwf 0.00</span>
+                                <span>System Fee (25%):</span>
+                                <span>-<?php echo formatCurrency($originalPrice * 0.25); ?></span>
                             </div>
                             <div class="border-t border-gray-300 pt-2 flex justify-between font-semibold">
-                                <span>You'll Receive:</span>
-                                <span id="display-earnings" class="text-green-600">Rwf 0.00</span>
+                                <span>Your Earnings (75%):</span>
+                                <span class="text-green-600"><?php echo formatCurrency($originalPrice * 0.75); ?></span>
                             </div>
+                        </div>
+                        <div class="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Ticket is listed at the original price. You'll receive 75% of the sale amount when sold.
                         </div>
                     </div>
 
@@ -246,12 +281,11 @@ include 'includes/header.php';
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                         <h4 class="font-semibold text-yellow-800 mb-2">Resale Terms</h4>
                         <ul class="text-sm text-yellow-700 space-y-1">
-                            <li>• Maximum resale price is 75% of the original ticket price</li>
-                            <li>• Platform fee of <?php echo $resaleFeePercentage; ?>% will be deducted from your
-                                earnings</li>
-                            <li>• Once sold, the ticket will be transferred to the buyer</li>
+                            <li>• Ticket is listed at the original purchase price (fixed)</li>
+                            <li>• When sold, you'll receive 75% of the sale price (25% system fee)</li>
+                            <li>• Once sold, the ticket will be securely transferred to the buyer</li>
                             <li>• You can cancel the listing anytime before it's sold</li>
-                            <li>• Earnings will be added to your account balance after sale</li>
+                            <li>• Your earnings will be added to your account balance immediately after sale</li>
                         </ul>
                     </div>
 
@@ -280,11 +314,19 @@ include 'includes/header.php';
                 <div class="p-6">
                     <div class="space-y-4 text-sm">
                         <div class="flex items-start space-x-3">
+                            <i class="fas fa-tag text-blue-600 mt-1"></i>
+                            <div>
+                                <h4 class="font-semibold">Fixed Original Price</h4>
+                                <p class="text-gray-600">Your ticket is listed at the exact original purchase price. No
+                                    price modification is allowed.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
                             <i class="fas fa-percentage text-blue-600 mt-1"></i>
                             <div>
-                                <h4 class="font-semibold">75% Price Cap</h4>
-                                <p class="text-gray-600">Resale prices are capped at 75% of the original price to ensure
-                                    fair pricing.</p>
+                                <h4 class="font-semibold">75% Earnings</h4>
+                                <p class="text-gray-600">When your ticket sells, you'll receive 75% of the sale price.
+                                    The remaining 25% covers platform fees and services.</p>
                             </div>
                         </div>
                         <div class="flex items-start space-x-3">
@@ -292,21 +334,33 @@ include 'includes/header.php';
                             <div>
                                 <h4 class="font-semibold">Secure Transfer</h4>
                                 <p class="text-gray-600">All ticket transfers are secure and verified through our
-                                    platform.</p>
+                                    platform with guaranteed payment protection.</p>
                             </div>
                         </div>
                         <div class="flex items-start space-x-3">
                             <i class="fas fa-clock text-blue-600 mt-1"></i>
                             <div>
                                 <h4 class="font-semibold">Quick Sales</h4>
-                                <p class="text-gray-600">Most tickets sell within 24-48 hours of listing.</p>
+                                <p class="text-gray-600">Most tickets sell within 24-48 hours of listing, especially
+                                    when priced competitively.</p>
                             </div>
                         </div>
                         <div class="flex items-start space-x-3">
                             <i class="fas fa-money-bill-wave text-blue-600 mt-1"></i>
                             <div>
                                 <h4 class="font-semibold">Instant Payments</h4>
-                                <p class="text-gray-600">Receive payment immediately after your ticket is sold.</p>
+                                <p class="text-gray-600">Receive your earnings immediately after your ticket is sold,
+                                    added directly to your account balance.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <i class="fas fa-calendar-alt text-blue-600 mt-1"></i>
+                            <div>
+                                <h4 class="font-semibold">Resale Timing Rules</h4>
+                                <p class="text-gray-600">
+                                    <strong>Single-day events:</strong> No resale once the event starts.<br>
+                                    <strong>Multi-day events:</strong> Resale allowed until the last day ends.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -328,8 +382,8 @@ include 'includes/header.php';
                                    FROM ticket_resales 
                                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
                     $stats = $db->fetchOne($statsQuery);
-                    
-                    $successRate = $stats['total_listings'] > 0 ? 
+
+                    $successRate = $stats['total_listings'] > 0 ?
                         round(($stats['sold_listings'] / $stats['total_listings']) * 100) : 0;
                     ?>
 
@@ -345,7 +399,8 @@ include 'includes/header.php';
                         </div>
                         <div class="text-center">
                             <div class="text-2xl font-bold text-purple-600">
-                                <?php echo formatCurrency($stats['avg_price'] ?? 0); ?></div>
+                                <?php echo formatCurrency($stats['avg_price'] ?? 0); ?>
+                            </div>
                             <div class="text-sm text-gray-600">Average Price</div>
                         </div>
                     </div>
@@ -379,28 +434,9 @@ include 'includes/header.php';
 </div>
 
 <script>
+// No JavaScript needed since price is fixed
 document.addEventListener('DOMContentLoaded', function() {
-    const resalePriceInput = document.getElementById('resale_price');
-    const displayResalePrice = document.getElementById('display-resale-price');
-    const displayPlatformFee = document.getElementById('display-platform-fee');
-    const displayEarnings = document.getElementById('display-earnings');
-
-    const feePercentage = <?php echo $resaleFeePercentage; ?>;
-
-    function updatePricingBreakdown() {
-        const resalePrice = parseFloat(resalePriceInput.value) || 0;
-        const platformFee = (resalePrice * feePercentage) / 100;
-        const earnings = resalePrice - platformFee;
-
-        displayResalePrice.textContent = 'Rwf ' + resalePrice.toFixed(2);
-        displayPlatformFee.textContent = '-Rwf ' + platformFee.toFixed(2);
-        displayEarnings.textContent = 'Rwf ' + earnings.toFixed(2);
-    }
-
-    resalePriceInput.addEventListener('input', updatePricingBreakdown);
-
-    // Initialize display
-    updatePricingBreakdown();
+    // Price is fixed at original price, no calculations needed
 });
 </script>
 

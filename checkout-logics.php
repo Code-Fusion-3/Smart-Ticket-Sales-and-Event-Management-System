@@ -88,7 +88,6 @@ $cartItems = $validItems;
 
 // Calculate totals
 $subtotal = 0;
-$fees = 0;
 $total = 0;
 $totalTickets = 0;
 
@@ -97,15 +96,8 @@ foreach ($cartItems as $item) {
     $totalTickets += $item['quantity'];
 }
 
-// Get service fee percentage
-$feesSql = "SELECT percentage FROM system_fees WHERE fee_type = 'ticket_sale'";
-$feesResult = $db->fetchOne($feesSql);
-if ($feesResult) {
-    $feePercentage = $feesResult['percentage'];
-    $fees = ($subtotal * $feePercentage) / 100;
-}
-
-$total = $subtotal + $fees;
+// Customer pays only the ticket price (no additional fees)
+$total = $subtotal;
 
 // Get user information
 $userSql = "SELECT username, email, phone_number, balance FROM users WHERE id = $userId";
@@ -179,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['stripe_cart_items'] = $cartItems;
             $_SESSION['stripe_total'] = $total;
             $_SESSION['stripe_subtotal'] = $subtotal;
-            $_SESSION['stripe_fees'] = $fees;
+            $_SESSION['stripe_fees'] = 0;
             $_SESSION['stripe_balance_used'] = $balanceUsed;
 
             // Redirect to Stripe checkout (this will be handled by checkout.php)
@@ -311,16 +303,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $updateEventResult = $db->query("UPDATE events SET available_tickets = available_tickets - $quantity WHERE id = $eventId");
                     if (!$updateEventResult) {
                         throw new Exception("Failed to update event availability");
-                    }
-                }
-
-                // Record system fee for customer
-                if ($fees > 0) {
-                    $feeTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
-                        VALUES ($userId, $fees, 'system_fee', 'completed', '$paymentReference', 'Service fee for ticket purchase')");
-
-                    if (!$feeTransactionResult) {
-                        throw new Exception("Failed to record system fee");
                     }
                 }
 

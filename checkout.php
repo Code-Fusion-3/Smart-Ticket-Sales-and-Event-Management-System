@@ -522,16 +522,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
                             <span class="font-medium"><?php echo formatCurrency($subtotal); ?></span>
                         </div>
 
-                        <?php if ($fees > 0): ?>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">
-                                Service Fee (<?php echo $feePercentage; ?>%)
-                                <i class="fas fa-info-circle text-gray-400 ml-1" title="Platform service fee"></i>
-                            </span>
-                            <span class="font-medium"><?php echo formatCurrency($fees); ?></span>
-                        </div>
-                        <?php endif; ?>
-
                         <?php if ($user['balance'] > 0): ?>
                         <div class="flex justify-between text-sm text-green-600" id="balance-usage"
                             style="display: none;">
