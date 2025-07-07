@@ -58,6 +58,15 @@ $withdrawalSql = "SELECT
                   WHERE DATE(created_at) BETWEEN '$startDate' AND '$endDate'";
 $withdrawalStats = $db->fetchOne($withdrawalSql);
 
+// Deposit Statistics
+$depositSql = "SELECT 
+                SUM(amount) as total_deposits,
+                COUNT(*) as total_deposit_requests
+              FROM transactions 
+              WHERE type = 'deposit' AND status = 'completed' 
+              AND DATE(created_at) BETWEEN '$startDate' AND '$endDate'";
+$depositStats = $db->fetchOne($depositSql);
+
 // Daily Revenue Chart Data
 $dailyRevenueSql = "SELECT 
                         DATE(t.created_at) as date,
@@ -137,6 +146,19 @@ $pendingWithdrawalsSql = "SELECT
                           LIMIT 10";
 $pendingWithdrawals = $db->fetchAll($pendingWithdrawalsSql);
 
+// Recent Deposits
+$recentDepositsSql = "SELECT 
+                        t.*, 
+                        u.username, 
+                        u.email 
+                    FROM transactions t 
+                    JOIN users u ON t.user_id = u.id 
+                    WHERE t.type = 'deposit' AND t.status = 'completed' 
+                    AND DATE(t.created_at) BETWEEN '$startDate' AND '$endDate' 
+                    ORDER BY t.created_at DESC 
+                    LIMIT 10";
+$recentDeposits = $db->fetchAll($recentDepositsSql);
+
 include '../../includes/admin_header.php';
 ?>
 
@@ -211,7 +233,7 @@ include '../../includes/admin_header.php';
     </div>
 
     <!-- Key Metrics Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <!-- Total Sales -->
         <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <div class="flex items-center">
@@ -221,9 +243,11 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm font-medium text-gray-500">Total Sales</h3>
                     <p class="text-xl sm:text-2xl font-bold text-green-600">
-                        <?php echo formatCurrency($revenueStats['total_sales'] ?? 0); ?></p>
+                        <?php echo formatCurrency($revenueStats['total_sales'] ?? 0); ?>
+                    </p>
                     <p class="text-xs text-gray-500">
-                        <?php echo number_format($revenueStats['total_transactions'] ?? 0); ?> transactions</p>
+                        <?php echo number_format($revenueStats['total_transactions'] ?? 0); ?> transactions
+                    </p>
                 </div>
             </div>
         </div>
@@ -237,10 +261,11 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm font-medium text-gray-500">Platform Fees</h3>
                     <p class="text-xl sm:text-2xl font-bold text-blue-600">
-                        <?php echo formatCurrency($revenueStats['total_fees'] ?? 0); ?></p>
+                        <?php echo formatCurrency($revenueStats['total_fees'] ?? 0); ?>
+                    </p>
                     <p class="text-xs text-gray-500">
-                        <?php 
-                        $feePercentage = ($revenueStats['total_sales'] > 0) ? 
+                        <?php
+                        $feePercentage = ($revenueStats['total_sales'] > 0) ?
                             round(($revenueStats['total_fees'] / $revenueStats['total_sales']) * 100, 2) : 0;
                         echo $feePercentage . '% of sales';
                         ?>
@@ -258,9 +283,11 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm font-medium text-gray-500">Withdrawals</h3>
                     <p class="text-xl sm:text-2xl font-bold text-red-600">
-                        <?php echo formatCurrency($withdrawalStats['total_withdrawals'] ?? 0); ?></p>
+                        <?php echo formatCurrency($withdrawalStats['total_withdrawals'] ?? 0); ?>
+                    </p>
                     <p class="text-xs text-gray-500">
-                        <?php echo number_format($withdrawalStats['total_withdrawal_requests'] ?? 0); ?> requests</p>
+                        <?php echo number_format($withdrawalStats['total_withdrawal_requests'] ?? 0); ?> requests
+                    </p>
                 </div>
             </div>
         </div>
@@ -274,9 +301,29 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm font-medium text-gray-500">Pending</h3>
                     <p class="text-xl sm:text-2xl font-bold text-yellow-600">
-                        <?php echo formatCurrency($withdrawalStats['pending_amount'] ?? 0); ?></p>
+                        <?php echo formatCurrency($withdrawalStats['pending_amount'] ?? 0); ?>
+                    </p>
                     <p class="text-xs text-gray-500">
-                        <?php echo number_format($withdrawalStats['pending_count'] ?? 0); ?> pending</p>
+                        <?php echo number_format($withdrawalStats['pending_count'] ?? 0); ?> pending
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deposits -->
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                    <i class="fas fa-piggy-bank text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-500">Deposits</h3>
+                    <p class="text-xl sm:text-2xl font-bold text-indigo-600">
+                        <?php echo formatCurrency($depositStats['total_deposits'] ?? 0); ?>
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        <?php echo number_format($depositStats['total_deposit_requests'] ?? 0); ?> deposits
+                    </p>
                 </div>
             </div>
         </div>
@@ -296,42 +343,42 @@ include '../../includes/admin_header.php';
         <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <h3 class="text-lg font-semibold mb-4">Top Events by Revenue</h3>
             <?php if (empty($topEvents)): ?>
-            <div class="text-center py-8">
-                <i class="fas fa-chart-bar text-4xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500">No event data for selected period</p>
-            </div>
-            <?php else: ?>
-            <div class="space-y-3">
-                <?php foreach ($topEvents as $index => $event): ?>
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center">
-                        <div
-                            class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                            <?php echo $index + 1; ?>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="text-sm font-medium text-gray-900 truncate">
-                                <?php echo htmlspecialchars($event['title']); ?>
-                            </div>
-                            <div class="text-xs text-gray-500">
-                                by <?php echo htmlspecialchars($event['planner_name']); ?> •
-                                <?php echo number_format($event['ticket_count']); ?> tickets
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-sm font-bold text-green-600">
-                            <?php echo formatCurrency($event['revenue']); ?>
-                        </div>
-                    </div>
+                <div class="text-center py-8">
+                    <i class="fas fa-chart-bar text-4xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">No event data for selected period</p>
                 </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="mt-4">
-                <a href="../events/index.php" class="text-indigo-600 hover:text-indigo-800 text-sm">
-                    View all events →
-                </a>
-            </div>
+            <?php else: ?>
+                <div class="space-y-3">
+                    <?php foreach ($topEvents as $index => $event): ?>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center">
+                                <div
+                                    class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                                    <?php echo $index + 1; ?>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-sm font-medium text-gray-900 truncate">
+                                        <?php echo htmlspecialchars($event['title']); ?>
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        by <?php echo htmlspecialchars($event['planner_name']); ?> •
+                                        <?php echo number_format($event['ticket_count']); ?> tickets
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm font-bold text-green-600">
+                                    <?php echo formatCurrency($event['revenue']); ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="mt-4">
+                    <a href="../events/index.php" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                        View all events →
+                    </a>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -339,46 +386,46 @@ include '../../includes/admin_header.php';
         <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <h3 class="text-lg font-semibold mb-4">Top Event Planners</h3>
             <?php if (empty($topPlanners)): ?>
-            <div class="text-center py-8">
-                <i class="fas fa-users text-4xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500">No planner data for selected period</p>
-            </div>
-            <?php else: ?>
-            <div class="space-y-3">
-                <?php foreach ($topPlanners as $index => $planner): ?>
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center">
-                        <div
-                            class="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                            <?php echo $index + 1; ?>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="text-sm font-medium text-gray-900 truncate">
-                                <?php echo htmlspecialchars($planner['username']); ?>
-                            </div>
-                            <div class="text-xs text-gray-500">
-                                <?php echo number_format($planner['event_count']); ?> events •
-                                <?php echo number_format($planner['ticket_count']); ?> tickets
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-sm font-bold text-green-600">
-                            <?php echo formatCurrency($planner['revenue']); ?>
-                        </div>
-                        <a href="../users/view.php?id=<?php echo $planner['id']; ?>"
-                            class="text-xs text-indigo-600 hover:text-indigo-800">
-                            View Profile
-                        </a>
-                    </div>
+                <div class="text-center py-8">
+                    <i class="fas fa-users text-4xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">No planner data for selected period</p>
                 </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="mt-4">
-                <a href="../users/index.php?role=event_planner" class="text-indigo-600 hover:text-indigo-800 text-sm">
-                    View all planners →
-                </a>
-            </div>
+            <?php else: ?>
+                <div class="space-y-3">
+                    <?php foreach ($topPlanners as $index => $planner): ?>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center">
+                                <div
+                                    class="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                                    <?php echo $index + 1; ?>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-sm font-medium text-gray-900 truncate">
+                                        <?php echo htmlspecialchars($planner['username']); ?>
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        <?php echo number_format($planner['event_count']); ?> events •
+                                        <?php echo number_format($planner['ticket_count']); ?> tickets
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm font-bold text-green-600">
+                                    <?php echo formatCurrency($planner['revenue']); ?>
+                                </div>
+                                <a href="../users/view.php?id=<?php echo $planner['id']; ?>"
+                                    class="text-xs text-indigo-600 hover:text-indigo-800">
+                                    View Profile
+                                </a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="mt-4">
+                    <a href="../users/index.php?role=event_planner" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                        View all planners →
+                    </a>
+                </div>
             <?php endif; ?>
         </div>
     </div>
@@ -389,54 +436,57 @@ include '../../includes/admin_header.php';
         <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <h3 class="text-lg font-semibold mb-4">High-Value Transactions</h3>
             <?php if (empty($highValueTransactions)): ?>
-            <div class="text-center py-8">
-                <i class="fas fa-money-bill-wave text-4xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500">No high-value transactions for selected period</p>
-            </div>
+                <div class="text-center py-8">
+                    <i class="fas fa-money-bill-wave text-4xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">No high-value transactions for selected period</p>
+                </div>
             <?php else: ?>
-            <div class="overflow-x-auto">
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">User</th>
-                            <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Event</th>
-                            <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Amount</th>
-                            <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($highValueTransactions as $transaction): ?>
-                        <tr class="border-b">
-                            <td class="py-2">
-                                <div class="text-sm font-medium">
-                                    <?php echo htmlspecialchars($transaction['user_name']); ?></div>
-                                <div class="text-xs text-gray-500">
-                                    <?php echo htmlspecialchars($transaction['user_email']); ?></div>
-                            </td>
-                            <td class="py-2">
-                                <div class="text-sm">
-                                    <?php echo htmlspecialchars($transaction['event_title'] ?? 'N/A'); ?></div>
-                            </td>
-                            <td class="py-2">
-                                <div class="text-sm font-bold text-green-600">
-                                    <?php echo formatCurrency($transaction['amount']); ?>
-                                </div>
-                            </td>
-                            <td class="py-2">
-                                <div class="text-xs text-gray-500">
-                                    <?php echo formatDateTime($transaction['created_at']); ?>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-4">
-                <a href="transactions.php" class="text-indigo-600 hover:text-indigo-800 text-sm">
-                    View all transactions →
-                </a>
-            </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">User</th>
+                                <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Event</th>
+                                <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($highValueTransactions as $transaction): ?>
+                                <tr class="border-b">
+                                    <td class="py-2">
+                                        <div class="text-sm font-medium">
+                                            <?php echo htmlspecialchars($transaction['user_name']); ?>
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            <?php echo htmlspecialchars($transaction['user_email']); ?>
+                                        </div>
+                                    </td>
+                                    <td class="py-2">
+                                        <div class="text-sm">
+                                            <?php echo htmlspecialchars($transaction['event_title'] ?? 'N/A'); ?>
+                                        </div>
+                                    </td>
+                                    <td class="py-2">
+                                        <div class="text-sm font-bold text-green-600">
+                                            <?php echo formatCurrency($transaction['amount']); ?>
+                                        </div>
+                                    </td>
+                                    <td class="py-2">
+                                        <div class="text-xs text-gray-500">
+                                            <?php echo formatDateTime($transaction['created_at']); ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4">
+                    <a href="transactions.php" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                        View all transactions →
+                    </a>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -445,148 +495,209 @@ include '../../includes/admin_header.php';
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Pending Withdrawals</h3>
                 <?php if (!empty($pendingWithdrawals)): ?>
-                <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    <?php echo count($pendingWithdrawals); ?> pending
-                </span>
+                    <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        <?php echo count($pendingWithdrawals); ?> pending
+                    </span>
                 <?php endif; ?>
             </div>
 
             <?php if (empty($pendingWithdrawals)): ?>
-            <div class="text-center py-8">
-                <i class="fas fa-check-circle text-4xl text-green-300 mb-4"></i>
-                <p class="text-gray-500">No pending withdrawal requests</p>
-            </div>
-            <?php else: ?>
-            <div class="space-y-3">
-                <?php foreach ($pendingWithdrawals as $withdrawal): ?>
-                <div class="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div class="min-w-0 flex-1">
-                        <div class="text-sm font-medium text-gray-900">
-                            <?php echo htmlspecialchars($withdrawal['username']); ?>
-                        </div>
-                        <div class="text-xs text-gray-500">
-                            <?php echo htmlspecialchars($withdrawal['email']); ?>
-                        </div>
-                        <div class="text-xs text-gray-500">
-                            Requested: <?php echo formatDateTime($withdrawal['created_at']); ?>
-                        </div>
-                    </div>
-                    <div class="text-right ml-4">
-                        <div class="text-sm font-bold text-red-600">
-                            <?php echo formatCurrency($withdrawal['amount']); ?>
-                        </div>
-                        <div class="text-xs text-gray-500">
-                            Fee: <?php echo formatCurrency($withdrawal['fee']); ?>
-                        </div>
-                        <a href="withdrawals.php?id=<?php echo $withdrawal['id']; ?>"
-                            class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
-                            Review →
-                        </a>
-                    </div>
+                <div class="text-center py-8">
+                    <i class="fas fa-check-circle text-4xl text-green-300 mb-4"></i>
+                    <p class="text-gray-500">No pending withdrawal requests</p>
                 </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="mt-4">
-                <a href="withdrawals.php" class="text-indigo-600 hover:text-indigo-800 text-sm">
-                    View all withdrawal requests →
-                </a>
-            </div>
+            <?php else: ?>
+                <div class="space-y-3">
+                    <?php foreach ($pendingWithdrawals as $withdrawal): ?>
+                        <div class="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <div class="min-w-0 flex-1">
+                                <div class="text-sm font-medium text-gray-900">
+                                    <?php echo htmlspecialchars($withdrawal['username']); ?>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    <?php echo htmlspecialchars($withdrawal['email']); ?>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Requested: <?php echo formatDateTime($withdrawal['created_at']); ?>
+                                </div>
+                            </div>
+                            <div class="text-right ml-4">
+                                <div class="text-sm font-bold text-red-600">
+                                    <?php echo formatCurrency($withdrawal['amount']); ?>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Fee: <?php echo formatCurrency($withdrawal['fee']); ?>
+                                </div>
+                                <a href="withdrawals.php?id=<?php echo $withdrawal['id']; ?>"
+                                    class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                    Review →
+                                </a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="mt-4">
+                    <a href="withdrawals.php" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                        View all withdrawal requests →
+                    </a>
+                </div>
             <?php endif; ?>
         </div>
+    </div>
+
+    <!-- Deposits Section -->
+    <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-6">
+        <h3 class="text-lg font-semibold mb-4">Recent Deposits</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-indigo-600">
+                        <?php echo formatCurrency($depositStats['total_deposits'] ?? 0); ?>
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        <?php echo number_format($depositStats['total_deposit_requests'] ?? 0); ?> Deposits
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php if (empty($recentDeposits)): ?>
+            <div class="text-center py-8">
+                <i class="fas fa-piggy-bank text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">No deposit records for selected period</p>
+            </div>
+        <?php else: ?>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <?php foreach ($recentDeposits as $deposit): ?>
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        <?php echo htmlspecialchars($deposit['username']); ?>
+                                    </div>
+                                    <div class="text-xs text-gray-500"><?php echo htmlspecialchars($deposit['email']); ?></div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="text-sm font-bold text-indigo-600">
+                                        <?php echo formatCurrency($deposit['amount']); ?>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="text-sm text-gray-900"><?php echo formatDateTime($deposit['created_at']); ?>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="text-xs text-gray-500"><?php echo htmlspecialchars($deposit['reference_id']); ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Revenue Chart
-    const ctx = document.getElementById('revenueChart').getContext('2d');
+    document.addEventListener('DOMContentLoaded', function () {
+        // Revenue Chart
+        const ctx = document.getElementById('revenueChart').getContext('2d');
 
-    const chartData = {
-        labels: [
-            <?php 
-            foreach ($dailyRevenue as $day) {
-                echo "'" . date('M j', strtotime($day['date'])) . "',";
-            }
-            ?>
-        ],
-        datasets: [{
-            label: 'Sales Revenue',
-            data: [
-                <?php 
+        const chartData = {
+            labels: [
+                <?php
                 foreach ($dailyRevenue as $day) {
-                    echo ($day['sales'] ?? 0) . ",";
+                    echo "'" . date('M j', strtotime($day['date'])) . "',";
                 }
                 ?>
             ],
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-            borderColor: 'rgba(34, 197, 94, 1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-        }, {
-            label: 'Platform Fees',
-            data: [
-                <?php 
-                foreach ($dailyRevenue as $day) {
-                    echo ($day['fees'] ?? 0) . ",";
-                }
-                ?>
-            ],
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            borderColor: 'rgba(59, 130, 246, 1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-        }]
-    };
+            datasets: [{
+                label: 'Sales Revenue',
+                data: [
+                    <?php
+                    foreach ($dailyRevenue as $day) {
+                        echo ($day['sales'] ?? 0) . ",";
+                    }
+                    ?>
+                ],
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                borderColor: 'rgba(34, 197, 94, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }, {
+                label: 'Platform Fees',
+                data: [
+                    <?php
+                    foreach ($dailyRevenue as $day) {
+                        echo ($day['fees'] ?? 0) . ",";
+                    }
+                    ?>
+                ],
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        };
 
-    new Chart(ctx, {
-        type: 'line',
-        data: chartData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
+        new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: false
+                    }
                 },
-                title: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'Rwf' + value.toLocaleString();
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return 'Rwf' + value.toLocaleString();
+                            }
                         }
                     }
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            elements: {
-                point: {
-                    radius: 4,
-                    hoverRadius: 6
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                elements: {
+                    point: {
+                        radius: 4,
+                        hoverRadius: 6
+                    }
                 }
             }
-        }
-    });
+        });
 
-    // Period selector functionality
-    document.getElementById('period').addEventListener('change', function() {
-        if (this.value !== 'custom') {
-            // Auto-submit for quick selections
-            this.form.submit();
-        }
+        // Period selector functionality
+        document.getElementById('period').addEventListener('change', function () {
+            if (this.value !== 'custom') {
+                // Auto-submit for quick selections
+                this.form.submit();
+            }
+        });
     });
-});
 </script>
 
 <?php include '../../includes/admin_footer.php'; ?>

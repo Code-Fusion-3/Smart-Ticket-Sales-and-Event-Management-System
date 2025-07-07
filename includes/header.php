@@ -63,6 +63,9 @@ require_once 'auth.php';
                     </a>
                     <?php endif; ?>
                     <a href="<?php echo SITE_URL; ?>/logout.php" class="hover:text-indigo-200">Logout</a>
+                    <?php if (isLoggedIn()): ?>
+                    <li><a href="deposit.php" class="hover:text-indigo-600 font-semibold">Deposit Funds</a></li>
+                    <?php endif; ?>
                     <?php else: ?>
                     <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
 
@@ -98,6 +101,9 @@ require_once 'auth.php';
                 </a>
                 <?php endif; ?>
                 <a href="<?php echo SITE_URL; ?>/logout.php" class="block py-2 hover:text-indigo-200">Logout</a>
+                <?php if (isLoggedIn()): ?>
+                <li><a href="deposit.php" class="block py-2 hover:text-indigo-600 font-semibold">Deposit Funds</a></li>
+                <?php endif; ?>
                 <?php else: ?>
                 <a href="<?php echo SITE_URL; ?>/login.php" class="block py-2 hover:text-indigo-200">Login</a>
                 <a href="<?php echo SITE_URL; ?>/register.php" class="block py-2 hover:text-indigo-200">Register</a>

@@ -13,30 +13,30 @@ if (!defined('SITE_URL')) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-    .sidebar-link.active {
-        background-color: #3B82F6;
-        color: white;
-    }
+        .sidebar-link.active {
+            background-color: #3B82F6;
+            color: white;
+        }
 
-    /* Mobile sidebar overlay */
-    .sidebar-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 40;
-    }
+        /* Mobile sidebar overlay */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+        }
 
-    .sidebar-mobile {
-        transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
-    }
+        .sidebar-mobile {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
 
-    .sidebar-mobile.open {
-        transform: translateX(0);
-    }
+        .sidebar-mobile.open {
+            transform: translateX(0);
+        }
     </style>
 </head>
 
@@ -156,18 +156,18 @@ if (!defined('SITE_URL')) {
         <!-- Main Content -->
         <div class="flex-1 overflow-x-hidden min-w-0">
             <?php
-        // Display flash messages
-        if (isset($_SESSION['success_message'])) {
-            echo displaySuccess($_SESSION['success_message']);
-            unset($_SESSION['success_message']);
-        }
-        
-        if (isset($_SESSION['error_message'])) {
-            echo displayError($_SESSION['error_message']);
-            unset($_SESSION['error_message']);
-        }
-        
-        if (isset($_GET['error']) && $_GET['error'] === 'unauthorized') {
-            echo displayError("You don't have permission to access this page.");
-        }
-        ?>
+            // Display flash messages
+            if (isset($_SESSION['success_message'])) {
+                echo displaySuccess($_SESSION['success_message']);
+                unset($_SESSION['success_message']);
+            }
+
+            if (isset($_SESSION['error_message'])) {
+                echo displayError($_SESSION['error_message']);
+                unset($_SESSION['error_message']);
+            }
+
+            if (isset($_GET['error']) && $_GET['error'] === 'unauthorized') {
+                echo displayError("You don't have permission to access this page.");
+            }
+            ?>
