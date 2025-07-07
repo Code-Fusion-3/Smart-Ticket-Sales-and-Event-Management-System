@@ -69,7 +69,7 @@ if (intval($userId) != $depositUserId) {
     redirect('deposit.php');
 }
 
-try {
+try {   
     $session = \Stripe\Checkout\Session::retrieve($sessionId);
     if ($session->payment_status !== 'paid') {
         $_SESSION['error_message'] = "Deposit payment was not completed successfully.";
