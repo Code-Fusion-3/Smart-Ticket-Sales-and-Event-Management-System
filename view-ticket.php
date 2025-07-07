@@ -63,15 +63,13 @@ $eventStatusClasses = [
 ];
 $eventStatusClass = $eventStatusClasses[$eventStatus];
 
-// Generate QR code data - include ticket ID, event ID, and a verification token
-// This ensures the QR code contains all necessary information for verification
-$qrCodeData = json_encode([
-    'ticket_id' => $ticketId,
-    'event_id' => $ticket['event_id'],
-    'user_id' => $userId,
-    'verification_token' => $ticket['qr_code'],
-    'timestamp' => time()
-]);
+// Build agent scan URL with all QR code data as query parameters
+$agentScanUrl = 'http://192.168.137.73:3000/agent/verify_ticket.php?ticket_id=' . urlencode($ticketId)
+    . '&event_id=' . urlencode($ticket['event_id'])
+    . '&user_id=' . urlencode($userId)
+    . '&verification_token=' . urlencode($ticket['qr_code'])
+    . '&timestamp=' . urlencode(time());
+$qrCodeData = $agentScanUrl;
 
 include 'includes/header.php';
 ?>
@@ -190,13 +188,17 @@ include 'includes/header.php';
                         <div class="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
                             <div class="mb-4">
                                 <div class="mx-auto w-48 h-48 bg-white p-2 border rounded-lg shadow-inner">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=<?php echo urlencode($qrCodeData); ?>"
-                                        alt="Ticket QR Code" class="w-full h-full">
+                                    <a href="http://192.168.137.73:3000/agent/verify_ticket.php?ticket_id=<?php echo urlencode($ticketId); ?>"
+                                        title="Verify/Scan this ticket">
+                                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=<?php echo urlencode($qrCodeData); ?>"
+                                            alt="Ticket QR Code" class="w-full h-full cursor-pointer">
+                                    </a>
                                 </div>
                                 <div class="text-xs text-gray-500 mt-2">
                                     <p>Scan to verify ticket</p>
                                     <p class="font-mono mt-1"><?php echo substr($ticket['qr_code'], 0, 16) . '...'; ?>
                                     </p>
+
                                 </div>
                             </div>
 
