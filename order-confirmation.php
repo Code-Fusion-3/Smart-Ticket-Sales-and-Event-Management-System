@@ -17,10 +17,10 @@ if (isset($_SESSION['order_details'])) {
     $orderDetails = $_SESSION['order_details'];
     $orderReference = $orderDetails['reference'];
     $generatedTickets = $orderDetails['tickets'];
-    
+
     // Clear from session after use
     unset($_SESSION['order_details']);
-    
+
     // Get transaction details for verification
     $transactionSql = "SELECT * FROM transactions 
                        WHERE user_id = $userId 
@@ -28,7 +28,7 @@ if (isset($_SESSION['order_details'])) {
                        AND type = 'purchase'
                        ORDER BY created_at DESC LIMIT 1";
     $transaction = $db->fetchOne($transactionSql);
-    
+
 } else {
     // Fallback: Check if order reference exists in session (old approach)
     if (!isset($_SESSION['order_reference'])) {
@@ -65,7 +65,7 @@ if (isset($_SESSION['order_details'])) {
                    AND t.created_at <= DATE_ADD('" . $transaction['created_at'] . "', INTERVAL 1 MINUTE)
                    ORDER BY t.id ASC";
     $generatedTickets = $db->fetchAll($ticketsSql);
-    
+
     // Convert to the format expected by the template
     foreach ($generatedTickets as &$ticket) {
         $ticket['event_title'] = $ticket['event_title'];
@@ -75,7 +75,7 @@ if (isset($_SESSION['order_details'])) {
         $ticket['start_date'] = $ticket['start_date'];
         $ticket['start_time'] = $ticket['start_time'];
     }
-}   
+}
 
 if (empty($generatedTickets)) {
     $_SESSION['error_message'] = "No tickets found for this order. Please check your tickets in My Tickets.";
@@ -188,45 +188,47 @@ include 'includes/header.php';
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <?php foreach ($generatedTickets as $ticket): ?>
-                                <tr>
-                                    <td class="px-4 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            <?php echo htmlspecialchars($ticket['event_title']); ?>
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            <?php echo formatDate($ticket['start_date']); ?> at
-                                            <?php echo formatTime($ticket['start_time']); ?>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">
-                                            <?php echo htmlspecialchars($ticket['ticket_name'] ?? 'Standard Ticket'); ?>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">
-                                            <?php echo htmlspecialchars($ticket['recipient_name']); ?>
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            <?php echo htmlspecialchars($ticket['recipient_email']); ?>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <?php echo formatCurrency($ticket['purchase_price']); ?>
-                                    </td>
-                                </tr>
+                                    <tr>
+                                        <td class="px-4 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">
+                                                <?php echo htmlspecialchars($ticket['event_title']); ?>
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                <?php echo formatDate($ticket['start_date']); ?> at
+                                                <?php echo formatTime($ticket['start_time']); ?>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">
+                                                <?php echo htmlspecialchars($ticket['ticket_name'] ?? 'Standard Ticket'); ?>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">
+                                                <?php echo htmlspecialchars($ticket['recipient_name']); ?>
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                <?php echo htmlspecialchars($ticket['recipient_email']); ?>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <?php echo formatCurrency($ticket['purchase_price']); ?>
+                                        </td>
+                                    </tr>
                                 <?php endforeach; ?>
                             </tbody>
                             <tfoot>
                                 <tr>
                                     <td colspan="3" class="px-4 py-3 text-right font-medium">Subtotal</td>
                                     <td class="px-4 py-3 text-right font-medium">
-                                        <?php echo formatCurrency($totalAmount); ?></td>
+                                        <?php echo formatCurrency($totalAmount); ?>
+                                    </td>
                                 </tr>
                                 <tr class="bg-gray-50">
                                     <td colspan="3" class="px-4 py-3 text-right font-bold">Total</td>
                                     <td class="px-4 py-3 text-right font-bold">
-                                        <?php echo formatCurrency($totalAmount); ?></td>
+                                        <?php echo formatCurrency($totalAmount); ?>
+                                    </td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -248,70 +250,72 @@ include 'includes/header.php';
                 </p>
 
                 <?php foreach ($ticketsByEvent as $eventId => $eventData): ?>
-                <div
-                    class="mb-6 pb-6 <?php echo $eventId !== array_key_last($ticketsByEvent) ? 'border-b border-gray-200' : ''; ?>">
-                    <h3 class="font-semibold text-lg mb-2"><?php echo htmlspecialchars($eventData['event_title']); ?>
-                    </h3>
-                    <div class="text-sm text-gray-600 mb-4">
-                        <div><i class="far fa-calendar-alt mr-1"></i>
-                            <?php echo formatDate($eventData['start_date']); ?> at
-                            <?php echo formatTime($eventData['start_time']); ?></div>
-                        <div><i class="fas fa-map-marker-alt mr-1"></i>
-                            <?php echo htmlspecialchars($eventData['venue']); ?>,
-                            <?php echo htmlspecialchars($eventData['city']); ?></div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <?php foreach ($eventData['tickets'] as $ticket): ?>
-                        <div
-                            class="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                                <div class="flex justify-between items-center">
-                                    <div class="font-medium">
-                                        <?php echo htmlspecialchars($ticket['ticket_type_name'] ?? 'Standard Ticket'); ?>
-                                    </div>
-                                    <div class="text-gray-500 text-sm">#<?php echo $ticket['id']; ?></div>
-                                </div>
+                    <div
+                        class="mb-6 pb-6 <?php echo $eventId !== array_key_last($ticketsByEvent) ? 'border-b border-gray-200' : ''; ?>">
+                        <h3 class="font-semibold text-lg mb-2"><?php echo htmlspecialchars($eventData['event_title']); ?>
+                        </h3>
+                        <div class="text-sm text-gray-600 mb-4">
+                            <div><i class="far fa-calendar-alt mr-1"></i>
+                                <?php echo formatDate($eventData['start_date']); ?> at
+                                <?php echo formatTime($eventData['start_time']); ?>
                             </div>
-                            <div class="p-4">
-                                <div class="text-center mb-4">
-                                    <div class="bg-gray-100 inline-block p-2 rounded-lg">
-                                        <!-- Generate actual QR code -->
-                                        <div class="w-32 h-32 bg-white flex items-center justify-center">
-                                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=<?php echo urlencode($ticket['qr_code']); ?>"
-                                                alt="QR Code" class="w-full h-full">
-                                        </div>
-                                    </div>
-                                    <div class="text-xs text-gray-500 mt-1">
-                                        <p>Scan to verify ticket</p>
-                                        <p class="font-mono"><?php echo substr($ticket['qr_code'], 0, 16) . '...'; ?>
-                                        </p>
-                                    </div>
-                                </div>
-
-
-                                <div class="text-sm">
-                                    <div class="mb-1"><span class="font-medium">Recipient:</span>
-                                        <?php echo htmlspecialchars($ticket['recipient_name']); ?></div>
-                                    <div><span class="font-medium">Email:</span>
-                                        <?php echo htmlspecialchars($ticket['recipient_email']); ?></div>
-                                </div>
-
-                                <div class="mt-4 flex justify-between">
-                                    <a href="view-ticket.php?id=<?php echo $ticket['id']; ?>" target="_blank"
-                                        class="text-indigo-600 hover:text-indigo-800 text-sm">
-                                        <i class="fas fa-eye mr-1"></i> View
-                                    </a>
-                                    <a href="download-ticket.php?id=<?php echo $ticket['id']; ?>"
-                                        class="text-indigo-600 hover:text-indigo-800 text-sm">
-                                        <i class="fas fa-download mr-1"></i> Download
-                                    </a>
-                                </div>
+                            <div><i class="fas fa-map-marker-alt mr-1"></i>
+                                <?php echo htmlspecialchars($eventData['venue']); ?>,
+                                <?php echo htmlspecialchars($eventData['city']); ?>
                             </div>
                         </div>
-                        <?php endforeach; ?>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <?php foreach ($eventData['tickets'] as $ticket): ?>
+                                <div
+                                    class="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                        <div class="flex justify-between items-center">
+                                            <div class="font-medium">
+                                                <?php echo htmlspecialchars($ticket['ticket_type_name'] ?? 'Standard Ticket'); ?>
+                                            </div>
+                                            <div class="text-gray-500 text-sm">#<?php echo $ticket['id']; ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="p-4">
+                                        <div class="text-center mb-4">
+                                            <div class="bg-gray-100 inline-block p-2 rounded-lg">
+                                                <!-- Generate actual QR code -->
+                                                <div class="w-32 h-32 bg-white flex items-center justify-center">
+                                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=<?php echo urlencode($ticket['qr_code']); ?>"
+                                                        alt="QR Code" class="w-full h-full">
+                                                </div>
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                <p>Scan to verify ticket</p>
+                                                <p class="font-mono"><?php echo substr($ticket['qr_code'], 0, 16) . '...'; ?>
+                                                </p>
+                                            </div>
+                                        </div>
+
+
+                                        <div class="text-sm">
+                                            <div class="mb-1"><span class="font-medium">Recipient:</span>
+                                                <?php echo htmlspecialchars($ticket['recipient_name']); ?></div>
+                                            <div><span class="font-medium">Email:</span>
+                                                <?php echo htmlspecialchars($ticket['recipient_email']); ?></div>
+                                        </div>
+
+                                        <div class="mt-4 flex justify-between">
+                                            <a href="view-ticket.php?id=<?php echo $ticket['id']; ?>" target="_blank"
+                                                class="text-indigo-600 hover:text-indigo-800 text-sm">
+                                                <i class="fas fa-eye mr-1"></i> View
+                                            </a>
+                                            <a href="download-ticket.php?id=<?php echo $ticket['id']; ?>"
+                                                class="text-indigo-600 hover:text-indigo-800 text-sm">
+                                                <i class="fas fa-download mr-1"></i> Download
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                </div>
                 <?php endforeach; ?>
 
                 <div class="mt-6 flex flex-wrap gap-4 justify-center">

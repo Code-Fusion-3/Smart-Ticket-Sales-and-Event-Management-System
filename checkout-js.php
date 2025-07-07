@@ -236,10 +236,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h3 class="text-xl font-bold mb-3 text-gray-900">Processing Payment</h3>
                     <p id="processing-message" class="text-gray-600 mb-4">${message}</p>
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                        <p class="text-sm text-yellow-800">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            This is a demo environment. No actual payment is being processed.
-                        </p>
+                       
+                       .
                     </div>
                 </div>
             `;

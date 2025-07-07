@@ -41,8 +41,9 @@ if (isset($_GET['resale']) && $_GET['resale'] == '1' && isset($_SESSION['resale_
     $balanceUsed = $resaleData['balance_used'];
     $amountToCharge = $resaleData['amount_to_charge'];
     $paymentMethod = $resaleData['payment_method'];
-    $paymentReference = $sessionId;
-
+    $stripeSessionId = $sessionId;
+    // Generate a user-friendly order reference for resale
+    $orderReference = 'RS-' . strtoupper(generateRandomString(10));
     // Fetch the resale listing again to ensure it's still valid
     $sql = "SELECT tr.*, t.id as ticket_id, t.qr_code, t.recipient_name, t.recipient_email, t.recipient_phone,
                    e.title, e.start_date, e.start_time, e.venue, e.city, e.address, e.description, e.image,
@@ -70,25 +71,25 @@ if (isset($_GET['resale']) && $_GET['resale'] == '1' && isset($_SESSION['resale_
         if ($balanceUsed > 0) {
             $newBuyerBalance = $user['balance'] - $balanceUsed;
             $db->query("UPDATE users SET balance = $newBuyerBalance WHERE id = $userId");
-            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, payment_method, description)
-                        VALUES ($userId, $balanceUsed, 'purchase', 'completed', '$paymentReference', 'balance', 'Resale ticket purchase using account balance')");
+            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, external_reference, payment_method, description)
+                        VALUES ($userId, $balanceUsed, 'purchase', 'completed', '$orderReference', '$stripeSessionId', 'balance', 'Resale ticket purchase using account balance')");
         }
         // Record Stripe payment transaction
         if ($amountToCharge > 0) {
-            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, payment_method, description)
-                        VALUES ($userId, $amountToCharge, 'purchase', 'completed', '$paymentReference', 'credit_card', 'Resale ticket purchase via Stripe')");
+            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, external_reference, payment_method, description)
+                        VALUES ($userId, $amountToCharge, 'purchase', 'completed', '$orderReference', '$stripeSessionId', 'credit_card', 'Resale ticket purchase via Stripe')");
         }
         // Add earnings to seller's balance
         $sellerEarnings = $listing['seller_earnings'];
         $db->query("UPDATE users SET balance = balance + $sellerEarnings WHERE id = " . $listing['seller_id']);
         // Record seller's earnings transaction
-        $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
-                    VALUES (" . $listing['seller_id'] . ", $sellerEarnings, 'sale', 'completed', '$paymentReference', 'Resale ticket sale earnings')");
+        $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, external_reference, description)
+                    VALUES (" . $listing['seller_id'] . ", $sellerEarnings, 'sale', 'completed', '$orderReference', '$stripeSessionId', 'Resale ticket sale earnings')");
         // Record platform fee
         $platformFee = $listing['platform_fee'];
         if ($platformFee > 0) {
-            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
-                        VALUES (" . $listing['seller_id'] . ", $platformFee, 'system_fee', 'completed', '$paymentReference', 'Platform fee for resale transaction')");
+            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, external_reference, description)
+                        VALUES (" . $listing['seller_id'] . ", $platformFee, 'system_fee', 'completed', '$orderReference', '$stripeSessionId', 'Platform fee for resale transaction')");
         }
         // Update ticket ownership and details
         $updateTicketSql = "UPDATE tickets SET 
@@ -140,7 +141,7 @@ if (isset($_GET['resale']) && $_GET['resale'] == '1' && isset($_SESSION['resale_
         sendEmail($listing['seller_email'], $sellerEmailSubject, $sellerEmailBody);
         $db->query("COMMIT");
         $_SESSION['success_message'] = "Ticket purchased successfully! Check your email for ticket details.";
-        $_SESSION['order_reference'] = $paymentReference;
+        $_SESSION['order_reference'] = $orderReference;
         redirect('order-confirmation.php');
     } catch (Exception $e) {
         $db->query("ROLLBACK");
