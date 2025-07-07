@@ -30,6 +30,126 @@ if (!isset($_GET['session_id'])) {
 
 $sessionId = $_GET['session_id'];
 
+// Check if this is a resold ticket purchase
+if (isset($_GET['resale']) && $_GET['resale'] == '1' && isset($_SESSION['resale_payment'])) {
+    $resaleData = $_SESSION['resale_payment'];
+    unset($_SESSION['resale_payment']);
+    $resaleId = (int) $resaleData['resale_id'];
+    $recipientName = $resaleData['recipient_name'];
+    $recipientEmail = $resaleData['recipient_email'];
+    $recipientPhone = $resaleData['recipient_phone'];
+    $balanceUsed = $resaleData['balance_used'];
+    $amountToCharge = $resaleData['amount_to_charge'];
+    $paymentMethod = $resaleData['payment_method'];
+    $paymentReference = $sessionId;
+
+    // Fetch the resale listing again to ensure it's still valid
+    $sql = "SELECT tr.*, t.id as ticket_id, t.qr_code, t.recipient_name, t.recipient_email, t.recipient_phone,
+                   e.title, e.start_date, e.start_time, e.venue, e.city, e.address, e.description, e.image,
+                   tt.name as ticket_type_name, tt.description as ticket_description,
+                   seller.username as seller_name, seller.email as seller_email
+            FROM ticket_resales tr
+            JOIN tickets t ON tr.ticket_id = t.id
+            JOIN events e ON t.event_id = e.id
+            LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id
+            JOIN users seller ON tr.seller_id = seller.id
+            WHERE tr.id = $resaleId AND tr.status = 'active'";
+    $listing = $db->fetchOne($sql);
+    if (!$listing) {
+        $_SESSION['error_message'] = "Resale listing not found or no longer available.";
+        redirect('marketplace.php');
+    }
+    // Check if user is trying to buy their own ticket
+    if ($listing['seller_id'] == $userId) {
+        $_SESSION['error_message'] = "You cannot buy your own ticket.";
+        redirect('marketplace.php');
+    }
+    try {
+        $db->query("START TRANSACTION");
+        // Record buyer's balance transaction if any
+        if ($balanceUsed > 0) {
+            $newBuyerBalance = $user['balance'] - $balanceUsed;
+            $db->query("UPDATE users SET balance = $newBuyerBalance WHERE id = $userId");
+            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, payment_method, description)
+                        VALUES ($userId, $balanceUsed, 'purchase', 'completed', '$paymentReference', 'balance', 'Resale ticket purchase using account balance')");
+        }
+        // Record Stripe payment transaction
+        if ($amountToCharge > 0) {
+            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, payment_method, description)
+                        VALUES ($userId, $amountToCharge, 'purchase', 'completed', '$paymentReference', 'credit_card', 'Resale ticket purchase via Stripe')");
+        }
+        // Add earnings to seller's balance
+        $sellerEarnings = $listing['seller_earnings'];
+        $db->query("UPDATE users SET balance = balance + $sellerEarnings WHERE id = " . $listing['seller_id']);
+        // Record seller's earnings transaction
+        $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
+                    VALUES (" . $listing['seller_id'] . ", $sellerEarnings, 'sale', 'completed', '$paymentReference', 'Resale ticket sale earnings')");
+        // Record platform fee
+        $platformFee = $listing['platform_fee'];
+        if ($platformFee > 0) {
+            $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
+                        VALUES (" . $listing['seller_id'] . ", $platformFee, 'system_fee', 'completed', '$paymentReference', 'Platform fee for resale transaction')");
+        }
+        // Update ticket ownership and details
+        $updateTicketSql = "UPDATE tickets SET 
+                               user_id = $userId,
+                               recipient_name = '" . $db->escape($recipientName) . "',
+                               recipient_email = '" . $db->escape($recipientEmail) . "',
+                               recipient_phone = '" . $db->escape($recipientPhone) . "',
+                               purchase_price = " . $listing['resale_price'] . ",
+                               status = 'sold',
+                               updated_at = NOW(),
+                               created_at = NOW()
+                               WHERE id = " . $listing['ticket_id'];
+        $db->query($updateTicketSql);
+        // Update resale listing status
+        $db->query("UPDATE ticket_resales SET status = 'sold', sold_at = NOW(), buyer_id = $userId WHERE id = $resaleId");
+        // Send notifications
+        // Notify buyer
+        $buyerNotificationTitle = "Ticket Purchase Successful";
+        $buyerNotificationMessage = "You have successfully purchased a resale ticket for '" . $listing['title'] . "'.";
+        $db->query("INSERT INTO notifications (user_id, title, message, type) VALUES ($userId, '" . $db->escape($buyerNotificationTitle) . "', '" . $db->escape($buyerNotificationMessage) . "', 'ticket')");
+        // Notify seller
+        $sellerNotificationTitle = "Ticket Sold";
+        $sellerNotificationMessage = "Your ticket for '" . $listing['title'] . "' has been sold for " . formatCurrency($listing['resale_price']) . ". Earnings: " . formatCurrency($sellerEarnings);
+        $db->query("INSERT INTO notifications (user_id, title, message, type) VALUES (" . $listing['seller_id'] . ", '" . $db->escape($sellerNotificationTitle) . "', '" . $db->escape($sellerNotificationMessage) . "', 'ticket')");
+        // Send email to buyer
+        $buyerEmailSubject = "Ticket Purchase Confirmation - " . $listing['title'];
+        $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($listing['qr_code']);
+        $ticketData = [
+            'id' => $listing['ticket_id'],
+            'recipient_name' => $recipientName,
+            'recipient_email' => $recipientEmail,
+            'recipient_phone' => $recipientPhone,
+            'purchase_price' => $listing['resale_price'],
+            'qr_code' => $listing['qr_code']
+        ];
+        $eventDetails = [
+            'title' => $listing['title'],
+            'start_date' => $listing['start_date'],
+            'start_time' => $listing['start_time'],
+            'venue' => $listing['venue'],
+            'city' => $listing['city'],
+            'address' => $listing['address']
+        ];
+        $buyerEmailBody = getEnhancedTicketEmailTemplate($ticketData, $eventDetails, $qrCodeUrl);
+        sendEmail($recipientEmail, $buyerEmailSubject, $buyerEmailBody);
+        // Send email to seller
+        $sellerEmailSubject = "Your Ticket Has Been Sold - " . $listing['title'];
+        $sellerEmailBody = "\n                <h2>Congratulations! Your ticket has been sold.</h2>\n                <p>Your ticket for <strong>" . htmlspecialchars($listing['title']) . "</strong> has been successfully sold.</p>\n                <p><strong>Sale Details:</strong></p>\n                <ul>\n                    <li>Sale Price: " . formatCurrency($listing['resale_price']) . "</li>\n                    <li>Platform Fee: " . formatCurrency($platformFee) . "</li>\n                    <li>Your Earnings: " . formatCurrency($sellerEarnings) . "</li>\n                </ul>\n                <p>The earnings have been added to your account balance.</p>\n                ";
+        sendEmail($listing['seller_email'], $sellerEmailSubject, $sellerEmailBody);
+        $db->query("COMMIT");
+        $_SESSION['success_message'] = "Ticket purchased successfully! Check your email for ticket details.";
+        $_SESSION['order_reference'] = $paymentReference;
+        redirect('order-confirmation.php');
+    } catch (Exception $e) {
+        $db->query("ROLLBACK");
+        error_log("Resale purchase error: " . $e->getMessage());
+        $_SESSION['error_message'] = "An error occurred during resale purchase. Please try again.";
+        redirect('marketplace.php');
+    }
+}
+
 try {
     // Retrieve the session from Stripe
     $session = \Stripe\Checkout\Session::retrieve($sessionId);
@@ -174,8 +294,6 @@ try {
                 throw new Exception("Failed to update event availability");
             }
         }
-
-
 
         // Process planner earnings for each event
         $plannerEarnings = [];

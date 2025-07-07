@@ -5,7 +5,9 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 require_once 'includes/notifications.php';
-
+// Load environment variables
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
 // Check if user is logged in
 if (!isLoggedIn()) {
     $_SESSION['error_message'] = "Please login to purchase tickets.";
@@ -56,9 +58,9 @@ $success = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['purchase_ticket'])) {
     $paymentMethod = $_POST['payment_method'] ?? '';
     $useBalance = isset($_POST['use_balance']) ? true : false;
-    $recipientName = trim($_POST['recipient_name'] ?? '');
-    $recipientEmail = trim($_POST['recipient_email'] ?? '');
-    $recipientPhone = trim($_POST['recipient_phone'] ?? '');
+    $recipientName = trim($_POST['recipient_name_1_0'] ?? '');
+    $recipientEmail = trim($_POST['recipient_email_1_0'] ?? '');
+    $recipientPhone = trim($_POST['recipient_phone_1_0'] ?? '');
     
     // Validate inputs
     if (empty($recipientName)) {
@@ -94,11 +96,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['purchase_ticket'])) {
             }
         }
         
+        // If Stripe payment is needed
+        if ($amountToCharge > 0 && $paymentMethod === 'credit_card') {
+            require_once __DIR__ . '/vendor/autoload.php';
+            \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+            
+            // Prepare line item for Stripe
+            $line_items = [[
+                'price_data' => [
+                    'currency' => 'rwf',
+                    'product_data' => [
+                        'name' => $listing['title'] . ' - ' . ($listing['ticket_type_name'] ?? 'Standard Ticket'),
+                    ],
+                    'unit_amount' => intval($amountToCharge * 1), // Stripe expects cents
+                ],
+                'quantity' => 1,
+            ]];
+            
+            // Store necessary info in session for post-payment processing
+            $_SESSION['resale_payment'] = [
+                'resale_id' => $resaleId,
+                'recipient_name' => $recipientName,
+                'recipient_email' => $recipientEmail,
+                'recipient_phone' => $recipientPhone,
+                'balance_used' => $balanceUsed,
+                'amount_to_charge' => $amountToCharge,
+                'payment_method' => $paymentMethod,
+            ];
+            
+            $session = \Stripe\Checkout\Session::create([
+                'payment_method_types' => ['card'],
+                'line_items' => $line_items,
+                'mode' => 'payment',
+                'customer_email' => $user['email'],
+                'success_url' => SITE_URL . '/stripe-payment-success.php?session_id={CHECKOUT_SESSION_ID}&resale=1',
+                'cancel_url' => SITE_URL . '/buy-resale-ticket.php?id=' . $resaleId . '&canceled=1',
+            ]);
+            header('Location: ' . $session->url);
+            exit;
+        }
+        
+        // If no Stripe payment needed, process purchase immediately
         // Simulate payment processing
         $paymentSuccess = true;
         $paymentReference = generateRandomString(12);
         
-                if ($paymentSuccess) {
+        if ($paymentSuccess) {
             try {
                 $db->query("START TRANSACTION");
                 
@@ -141,7 +184,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['purchase_ticket'])) {
                                    recipient_phone = '" . $db->escape($recipientPhone) . "',
                                    purchase_price = " . $listing['resale_price'] . ",
                                    status = 'sold',
-                                   updated_at = NOW()
+                                   updated_at = NOW(),
+                                   created_at = NOW()
                                    WHERE id = " . $listing['ticket_id'];
                 $db->query($updateTicketSql);
                 
@@ -153,12 +197,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['purchase_ticket'])) {
                 // Notify buyer
                 $buyerNotificationTitle = "Ticket Purchase Successful";
                 $buyerNotificationMessage = "You have successfully purchased a resale ticket for '" . $listing['title'] . "'.";
-                createNotification($userId, $buyerNotificationTitle, $buyerNotificationMessage, 'ticket');
+                // Insert notification for buyer
+                global $db;
+                $db->query("INSERT INTO notifications (user_id, title, message, type) VALUES ($userId, '" . $db->escape($buyerNotificationTitle) . "', '" . $db->escape($buyerNotificationMessage) . "', 'ticket')");
                 
                 // Notify seller
                 $sellerNotificationTitle = "Ticket Sold";
                 $sellerNotificationMessage = "Your ticket for '" . $listing['title'] . "' has been sold for " . formatCurrency($listing['resale_price']) . ". Earnings: " . formatCurrency($sellerEarnings);
-                createNotification($listing['seller_id'], $sellerNotificationTitle, $sellerNotificationMessage, 'ticket');
+                $db->query("INSERT INTO notifications (user_id, title, message, type) VALUES (" . $listing['seller_id'] . ", '" . $db->escape($sellerNotificationTitle) . "', '" . $db->escape($sellerNotificationMessage) . "', 'ticket')");
                 
                 // Send email to buyer
                 $buyerEmailSubject = "Ticket Purchase Confirmation - " . $listing['title'];
@@ -182,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['purchase_ticket'])) {
                     'address' => $listing['address']
                 ];
                 
-                $buyerEmailBody = getTicketEmailTemplate($ticketData, $eventDetails, $qrCodeUrl);
+                $buyerEmailBody = getEnhancedTicketEmailTemplate($ticketData, $eventDetails, $qrCodeUrl);
                 sendEmail($recipientEmail, $buyerEmailSubject, $buyerEmailBody);
                 
                 // Send email to seller
@@ -203,7 +249,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['purchase_ticket'])) {
                 $db->query("COMMIT");
                 
                 $_SESSION['success_message'] = "Ticket purchased successfully! Check your email for ticket details.";
-                redirect('customer/tickets.php');
+                $_SESSION['order_reference'] = $paymentReference;
+                redirect('order-confirmation.php');
                 
             } catch (Exception $e) {
                 $db->query("ROLLBACK");
@@ -220,316 +267,361 @@ include 'includes/header.php';
 ?>
 
 <div class="container mx-auto px-4 py-8">
-    <!-- Page Header -->
-    <div class="mb-8">
-        <nav class="text-sm breadcrumbs mb-4">
-            <a href="marketplace.php" class="text-indigo-600 hover:text-indigo-800">Marketplace</a>
-            <span class="mx-2 text-gray-500">></span>
-            <span class="text-gray-700">Purchase Ticket</span>
-        </nav>
-        <h1 class="text-3xl font-bold text-gray-900">Purchase Resale Ticket</h1>
-        <p class="text-gray-600 mt-2">Complete your purchase to secure this ticket</p>
-    </div>
-
-    <?php if (!empty($errors)): ?>
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <h4 class="font-bold">Please fix the following errors:</h4>
-            <ul class="list-disc pl-5 mt-2">
-                <?php foreach ($errors as $error): ?>
-                    <li><?php echo $error; ?></li>
-                <?php endforeach; ?>
-            </ul>
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold">Secure Checkout</h1>
+        <div class="text-sm text-gray-600">
+            <i class="fas fa-lock mr-1"></i>SSL Secured
         </div>
-    <?php endif; ?>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Purchase Form -->
-        <div class="lg:col-span-2">
-            <form method="POST" action="">
-                <!-- Ticket Information -->
+    </div>
+    <div class="flex flex-col lg:flex-row gap-8">
+        <!-- Checkout Form -->
+        <div class="lg:w-2/3">
+            <form method="POST" action="" id="checkout-form">
+                <!-- Order Review -->
                 <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div class="bg-indigo-600 text-white px-6 py-4">
-                        <h2 class="text-xl font-bold">Ticket Details</h2>
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-list-ul mr-2"></i>
+                            Order Review
+                        </h2>
                     </div>
-                    
                     <div class="p-6">
-                        <div class="flex items-start space-x-4">
-                            <div class="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-lg overflow-hidden">
-                                <?php if (!empty($listing['image'])): ?>
-                                    <img src="<?php echo substr($listing['image'], strpos($listing['image'], 'uploads')); ?>" 
-                                         alt="<?php echo htmlspecialchars($listing['title']); ?>" 
-                                         class="w-full h-full object-cover">
-                                <?php else: ?>
-                                    <div class="w-full h-full flex items-center justify-center">
-                                        <i class="fas fa-calendar-alt text-2xl text-gray-400"></i>
+                        <div class="space-y-6">
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-start space-x-4">
+                                    <!-- Event Image -->
+                                    <div class="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
+                                        <?php if (!empty($listing['image'])): ?>
+                                        <img src="<?php echo SITE_URL; ?>/uploads/events/<?php echo $listing['image']; ?>"
+                                            alt="<?php echo htmlspecialchars($listing['title']); ?>"
+                                            class="w-full h-full object-cover">
+                                        <?php else: ?>
+                                        <div
+                                            class="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                                            <i class="fas fa-calendar-alt text-white text-lg"></i>
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold text-gray-900"><?php echo htmlspecialchars($listing['title']); ?></h3>
-                                <p class="text-gray-600 mt-1"><?php echo htmlspecialchars($listing['ticket_type_name'] ?? 'Standard Ticket'); ?></p>
-                                
-                                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <div class="text-sm text-gray-500">Date & Time</div>
-                                        <div class="font-medium"><?php echo formatDate($listing['start_date']); ?> at <?php echo formatTime($listing['start_time']); ?></div>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm text-gray-500">Venue</div>
-                                        <div class="font-medium"><?php echo htmlspecialchars($listing['venue']); ?>, <?php echo htmlspecialchars($listing['city']); ?></div>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm text-gray-500">Seller</div>
-                                        <div class="font-medium"><?php echo htmlspecialchars($listing['seller_name']); ?></div>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm text-gray-500">Listed</div>
-                                        <div class="font-medium"><?php echo formatDateTime($listing['listed_at']); ?></div>
+                                    <!-- Event Details -->
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-lg text-gray-900 mb-2">
+                                            <?php echo htmlspecialchars($listing['title']); ?>
+                                        </h3>
+                                        <!-- Ticket Type Badge -->
+                                        <div class="mb-3">
+                                            <span
+                                                class="inline-flex items-center bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+                                                <i class="fas fa-ticket-alt mr-2"></i>
+                                                <?php echo htmlspecialchars($listing['ticket_type_name'] ?? 'Standard Ticket'); ?>
+                                            </span>
+                                            <?php if (!empty($listing['ticket_description']) && $listing['ticket_description'] !== 'Standard entry ticket'): ?>
+                                            <p class="text-sm text-gray-600 mt-1">
+                                                <?php echo htmlspecialchars($listing['ticket_description']); ?></p>
+                                            <?php endif; ?>
+                                        </div>
+                                        <!-- Event Info -->
+                                        <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-3">
+                                            <div class="flex items-center">
+                                                <i class="far fa-calendar-alt mr-2 text-gray-400"></i>
+                                                <?php echo formatDate($listing['start_date']); ?>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <i class="far fa-clock mr-2 text-gray-400"></i>
+                                                <?php echo formatTime($listing['start_time']); ?>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>
+                                                <?php echo htmlspecialchars($listing['venue']); ?>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <i class="fas fa-user mr-2 text-gray-400"></i>
+                                                <?php echo htmlspecialchars($listing['seller_name']); ?>
+                                            </div>
+                                        </div>
+                                        <!-- Quantity and Price -->
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-gray-600">
+                                                Quantity: <span class="font-medium">1</span>
+                                            </span>
+                                            <div class="text-right">
+                                                <div class="text-lg font-bold text-indigo-600">
+                                                    <?php echo formatCurrency($listing['resale_price']); ?>
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    <?php echo formatCurrency($listing['resale_price']); ?> each
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Recipient Information -->
+                <!-- Ticket Recipients Information -->
                 <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                    <div class="bg-green-600 text-white px-6 py-4">
-                        <h2 class="text-xl font-bold">Ticket Recipient Information</h2>
+                    <div class="bg-indigo-600 text-white px-6 py-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-users mr-2"></i>
+                            Ticket Recipient
+                        </h2>
                     </div>
-                    
                     <div class="p-6">
-                        <p class="text-gray-600 mb-4">Please provide the information for the person who will use this ticket.</p>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label for="recipient_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Full Name <span class="text-red-500">*</span>
-                                </label>
-                                <input type="text" id="recipient_name" name="recipient_name" 
-                                       value="<?php echo htmlspecialchars($user['username']); ?>" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                       required>
-                            </div>
-                            <div>
-                                <label for="recipient_email" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Email Address <span class="text-red-500">*</span>
-                                </label>
-                                <input type="email" id="recipient_email" name="recipient_email" 
-                                       value="<?php echo htmlspecialchars($user['email']); ?>" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                       required>
-                            </div>
-                            <div>
-                                <label for="recipient_phone" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Phone Number <span class="text-red-500">*</span>
-                                </label>
-                                <input type="text" id="recipient_phone" name="recipient_phone" 
-                                       value="<?php echo htmlspecialchars($user['phone_number']); ?>" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                       required>
+                        <p class="text-gray-600 mb-6">Please provide recipient information for this ticket. Leave blank
+                            to use your account information.</p>
+                        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                                        Full Name <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" name="recipient_name_1_0"
+                                        value="<?php echo htmlspecialchars($user['username']); ?>"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                        placeholder="Enter recipient's full name" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                                        Email Address <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="email" name="recipient_email_1_0"
+                                        value="<?php echo htmlspecialchars($user['email']); ?>"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                        placeholder="Enter email address" required>
+                                    <p class="text-xs text-gray-500 mt-1">Ticket will be sent to this email</p>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                                        Phone Number
+                                    </label>
+                                    <input type="tel" name="recipient_phone_1_0"
+                                        value="<?php echo htmlspecialchars($user['phone_number']); ?>"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                        placeholder="Enter phone number">
+                                    <p class="text-xs text-gray-500 mt-1">For SMS notifications (optional)</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
                 <!-- Payment Information -->
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div class="bg-blue-600 text-white px-6 py-4">
-                        <h2 class="text-xl font-bold">Payment Information</h2>
+                    <div class="bg-indigo-600 text-white px-6 py-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-credit-card mr-2"></i>
+                            Payment Information
+                        </h2>
                     </div>
-                    
                     <div class="p-6">
+                        <!-- Account Balance Option -->
                         <?php if ($user['balance'] > 0): ?>
-                            <div class="mb-6">
-                                <label class="flex items-center">
-                                    <input type="checkbox" name="use_balance" id="use_balance" class="form-checkbox h-5 w-5 text-indigo-600" 
-                                           <?php echo $user['balance'] >= $listing['resale_price'] ? 'checked' : ''; ?>>
-                                    <span class="ml-2">
-                                        Use my account balance (<?php echo formatCurrency($user['balance']); ?> available)
+                        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" name="use_balance" id="use_balance"
+                                    class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500"
+                                    <?php echo $user['balance'] >= $listing['resale_price'] ? 'checked' : ''; ?>>
+                                <div class="ml-3">
+                                    <span class="font-medium text-green-800">
+                                        Use my account balance (<?php echo formatCurrency($user['balance']); ?>
+                                        available)
                                     </span>
-                                </label>
-                                <?php if ($user['balance'] < $listing['resale_price']): ?>
-                                    <p class="text-sm text-gray-600 mt-1">
-                                        Your balance will cover <?php echo formatCurrency($user['balance']); ?> of the total. 
-                                        The remaining <?php echo formatCurrency($listing['resale_price'] - $user['balance']); ?> will be charged to your selected payment method.
+                                    <?php if ($user['balance'] < $listing['resale_price']): ?>
+                                    <p class="text-sm text-green-700 mt-1">
+                                        Your balance will cover <?php echo formatCurrency($user['balance']); ?> of your
+                                        total. The remaining
+                                        <?php echo formatCurrency($listing['resale_price'] - $user['balance']); ?> will
+                                        be charged to your selected payment method.
                                     </p>
-                                <?php endif; ?>
-                            </div>
+                                    <?php else: ?>
+                                    <p class="text-sm text-green-700 mt-1">
+                                        Your balance is sufficient to cover the entire purchase.
+                                    </p>
+                                    <?php endif; ?>
+                                </div>
+                            </label>
+                        </div>
                         <?php endif; ?>
-                        
-                        <div id="payment-method-selection" class="mb-4">
-                            <label class="block text-gray-700 font-bold mb-2">Payment Method</label>
-                            
-                            <div class="space-y-2">
-                                                               <label class="flex items-center p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
-                                    <input type="radio" name="payment_method" value="credit_card" class="h-4 w-4 text-indigo-600 payment-method-radio" checked>
-                                    <span class="ml-2 flex items-center">
-                                        <i class="far fa-credit-card text-gray-500 mr-2"></i> Credit Card
-                                    </span>
+                        <!-- Payment Method Selection -->
+                        <div id="payment-method-selection"
+                            class="mb-6 <?php echo ($user['balance'] >= $listing['resale_price']) ? 'hidden' : ''; ?>">
+                            <label class="block text-gray-700 font-bold mb-4">Select Payment Method</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Credit Card -->
+                                <label
+                                    class="flex items-center p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer transition duration-200 payment-method-option">
+                                    <input type="radio" name="payment_method" value="credit_card"
+                                        class="h-4 w-4 text-indigo-600 payment-method-radio" checked>
+                                    <div class="ml-3 flex-1">
+                                        <div class="flex items-center">
+                                            <i class="far fa-credit-card text-2xl text-gray-500 mr-3"></i>
+                                            <div>
+                                                <div class="font-medium text-gray-900">Credit Card</div>
+                                                <div class="text-sm text-gray-500">Visa, Mastercard, American Express
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </label>
-                                
-                                <label class="flex items-center p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
-                                    <input type="radio" name="payment_method" value="mobile_money" class="h-4 w-4 text-indigo-600 payment-method-radio">
-                                    <span class="ml-2 flex items-center">
-                                        <i class="fas fa-mobile-alt text-gray-500 mr-2"></i> Mobile Money
-                                    </span>
+                                <!-- Mobile Money -->
+                                <label
+                                    class="flex items-center p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-300 cursor-pointer transition duration-200 payment-method-option">
+                                    <input type="radio" name="payment_method" value="mobile_money"
+                                        class="h-4 w-4 text-indigo-600 payment-method-radio">
+                                    <div class="ml-3 flex-1">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-mobile-alt text-2xl text-gray-500 mr-3"></i>
+                                            <div>
+                                                <div class="font-medium text-gray-900">Mobile Money</div>
+                                                <div class="text-sm text-gray-500">MTN, Airtel, Vodafone</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </label>
                             </div>
                         </div>
-                        
                         <!-- Credit Card Details -->
                         <div id="credit-card-details" class="payment-details mb-6 p-4 bg-gray-50 rounded-lg">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Card Number</label>
-                                    <input type="text" id="card_number" name="card_number" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500" 
-                                           placeholder="4242 4242 4242 4242">
-                                    <p class="text-xs text-gray-500 mt-1">Use 4242 4242 4242 4242 for testing</p>
-                                </div>
-                                <div>
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Cardholder Name</label>
-                                    <input type="text" id="card_name" name="card_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500" 
-                                           placeholder="John Doe">
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div class="col-span-1">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Expiry Month</label>
-                                    <select id="card_month" name="card_month" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500">
-                                        <?php for ($i = 1; $i <= 12; $i++): ?>
-                                            <option value="<?php echo $i; ?>"><?php echo sprintf('%02d', $i); ?></option>
-                                        <?php endfor; ?>
-                                    </select>
-                                </div>
-                                <div class="col-span-1">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">Expiry Year</label>
-                                    <select id="card_year" name="card_year" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500">
-                                        <?php 
-                                        $currentYear = date('Y');
-                                        for ($i = $currentYear; $i <= $currentYear + 10; $i++): 
-                                        ?>
-                                            <option value="<?php echo $i; ?>"><?php echo $i; ?></option>
-                                        <?php endfor; ?>
-                                    </select>
-                                </div>
-                                <div class="col-span-2">
-                                    <label class="block text-gray-700 text-sm font-bold mb-2">CVV</label>
-                                    <input type="text" id="card_cvv" name="card_cvv" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500" 
-                                           placeholder="123">
-                                    <p class="text-xs text-gray-500 mt-1">Use any 3 digits for testing</p>
-                                </div>
-                            </div>
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <i class="fas fa-credit-card mr-2 text-indigo-600"></i>
+                                Pay with Card (Stripe)
+                            </h3>
+                            <button type="submit" id="stripe-checkout-button"
+                                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-lg transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+                                <i class="fab fa-cc-stripe mr-2"></i>
+                                Pay Securely with Stripe
+                            </button>
+                            <p class="text-xs text-gray-500 mt-2">
+                                You will be redirected to Stripe's secure payment page.
+                            </p>
                         </div>
-                        
                         <!-- Mobile Money Details -->
                         <div id="mobile-money-details" class="payment-details mb-6 p-4 bg-gray-50 rounded-lg hidden">
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-bold mb-2">Mobile Number</label>
-                                <input type="text" id="mobile_number" name="mobile_number" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500" 
-                                       placeholder="07XX XXX XXX">
-                                <p class="text-xs text-gray-500 mt-1">Use 0700000000 for testing</p>
-                            </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-bold mb-2">Network Provider</label>
-                                <select id="mobile_provider" name="mobile_provider" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500">
-                                    <option value="mtn">MTN Mobile Money</option>
-                                    <option value="airtel">Airtel Money</option>
-                                </select>
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <i class="fas fa-mobile-alt mr-2 text-indigo-600"></i>
+                                Mobile Money Information
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Mobile Number</label>
+                                    <input type="text" id="mobile_number" name="mobile_number"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                        placeholder="07XX XXX XXX">
+                                    <p class="text-xs text-gray-500 mt-1">Use 0700000000 for testing</p>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Network Provider</label>
+                                    <select id="mobile_provider" name="mobile_provider"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                                        <option value="mtn">MTN Mobile Money</option>
+                                        <option value="airtel">Airtel Money</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        
                         <div class="mt-6">
-                            <button type="submit" name="purchase_ticket" id="purchase-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded transition duration-300">
+                            <button type="submit" name="purchase_ticket" id="payment-button"
+                                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded transition duration-300">
                                 <i class="fas fa-credit-card mr-2"></i> Complete Purchase
                             </button>
                         </div>
-                        
                         <div class="mt-4 text-center text-sm text-gray-600">
-                            <p>By completing this purchase, you agree to our <a href="#" class="text-indigo-600 hover:text-indigo-800">Terms of Service</a></p>
+                            <p>By completing this purchase, you agree to our <a href="#"
+                                    class="text-indigo-600 hover:text-indigo-800">Terms of Service</a></p>
                             <p class="mt-2 text-xs bg-gray-100 p-2 rounded">
-                                <i class="fas fa-shield-alt mr-1"></i> This is a secure, encrypted payment. Your payment details are protected.
+                                <i class="fas fa-shield-alt mr-1"></i> This is a secure, encrypted payment. Your payment
+                                details are protected.
                             </p>
                         </div>
                     </div>
                 </div>
-                
                 <input type="hidden" name="purchase_ticket" value="1">
             </form>
         </div>
-        
-        <!-- Order Summary -->
-        <div class="lg:col-span-1">
+        <!-- Order Summary Sidebar -->
+        <div class="lg:w-1/3">
             <div class="bg-white rounded-lg shadow-md overflow-hidden sticky top-4">
                 <div class="bg-indigo-600 text-white px-6 py-4">
-                    <h2 class="text-xl font-bold">Order Summary</h2>
+                    <h2 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-receipt mr-2"></i>
+                        Order Summary
+                    </h2>
                 </div>
-                
                 <div class="p-6">
-                    <div class="space-y-4">
-                        <div class="flex justify-between">
-                            <span>Ticket Price</span>
-                            <span><?php echo formatCurrency($listing['resale_price']); ?></span>
-                        </div>
-                        
-                        <div class="border-t pt-4 flex justify-between font-bold text-lg">
-                            <span>Total</span>
-                            <span><?php echo formatCurrency($listing['resale_price']); ?></span>
-                        </div>
-                        
-                        <!-- Savings Display -->
-                        <?php 
-                        $originalPrice = $listing['original_price'] ?? $listing['resale_price'];
-                        $savings = $originalPrice - $listing['resale_price'];
-                        if ($savings > 0):
-                        ?>
-                            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
-                                <div class="flex items-center">
-                                    <i class="fas fa-tag text-green-600 mr-2"></i>
-                                    <div>
-                                        <div class="text-sm font-medium text-green-800">You Save</div>
-                                        <div class="text-lg font-bold text-green-600"><?php echo formatCurrency($savings); ?></div>
-                                    </div>
+                    <div class="space-y-4 mb-6">
+                        <h3 class="font-semibold text-gray-900">Items in Order</h3>
+                        <div class="flex justify-between items-start text-sm">
+                            <div class="flex-1 pr-4">
+                                <div class="font-medium text-gray-900 truncate">
+                                    <?php echo htmlspecialchars($listing['title']); ?>
+                                </div>
+                                <div class="text-gray-600">
+                                    1x
+                                    <?php echo htmlspecialchars($listing['ticket_type_name'] ?? 'Standard Ticket'); ?>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    <?php echo formatDate($listing['start_date']); ?> •
+                                    <?php echo htmlspecialchars($listing['venue']); ?>
                                 </div>
                             </div>
-                        <?php endif; ?>
-                        
-                        <!-- Ticket Details -->
-                        <div class="bg-gray-50 p-4 rounded-lg mt-4">
-                            <h3 class="font-semibold mb-2">Ticket Details</h3>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span>Event:</span>
-                                    <span class="font-medium"><?php echo htmlspecialchars($listing['title']); ?></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Type:</span>
-                                    <span class="font-medium"><?php echo htmlspecialchars($listing['ticket_type_name'] ?? 'Standard'); ?></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Date:</span>
-                                    <span class="font-medium"><?php echo formatDate($listing['start_date']); ?></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Time:</span>
-                                    <span class="font-medium"><?php echo formatTime($listing['start_time']); ?></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Venue:</span>
-                                    <span class="font-medium"><?php echo htmlspecialchars($listing['venue']); ?></span>
-                                </div>
+                            <div class="font-semibold text-gray-900">
+                                <?php echo formatCurrency($listing['resale_price']); ?>
                             </div>
                         </div>
-                        
-                        <!-- Security Notice -->
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                            <div class="flex items-start">
-                                <i class="fas fa-shield-alt text-blue-600 mr-2 mt-1"></i>
-                                <div class="text-sm text-blue-800">
-                                    <div class="font-medium">Secure Purchase</div>
-                                    <div>This ticket is verified and protected by our marketplace guarantee.</div>
-                                </div>
+                    </div>
+                    <div class="border-t border-gray-200 pt-4 space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Subtotal (1 ticket)</span>
+                            <span class="font-medium"><?php echo formatCurrency($listing['resale_price']); ?></span>
+                        </div>
+                        <div class="border-t border-gray-200 pt-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-bold text-gray-900">Total</span>
+                                <span class="text-2xl font-bold text-indigo-600" id="final-total">
+                                    <?php echo formatCurrency($listing['resale_price']); ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-semibold text-gray-900 mb-3">Payment Summary</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Total Events:</span>
+                                <span class="font-medium">1</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Total Tickets:</span>
+                                <span class="font-medium">1</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Payment Method:</span>
+                                <span class="font-medium" id="selected-payment-method">Credit Card</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 text-center">
+                        <div class="grid grid-cols-2 gap-4 text-xs text-gray-600">
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-shield-alt text-2xl text-green-600 mb-1"></i>
+                                <span>Secure Payment</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <i class="fas fa-mobile-alt text-2xl text-blue-600 mb-1"></i>
+                                <span>Instant Delivery</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div class="text-center">
+                            <h5 class="font-semibold text-blue-900 text-sm mb-1">Need Help?</h5>
+                            <p class="text-xs text-blue-700 mb-2">Our support team is here to assist you</p>
+                            <div class="flex justify-center space-x-4 text-xs">
+                                <a href="mailto:support@example.com" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-envelope mr-1"></i>Email
+                                </a>
+                                <a href="tel:+1234567890" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-phone mr-1"></i>Call
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -538,95 +630,5 @@ include 'includes/header.php';
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const paymentMethods = document.querySelectorAll('.payment-method-radio');
-    const paymentDetails = document.querySelectorAll('.payment-details');
-    const useBalanceCheckbox = document.getElementById('use_balance');
-    const paymentMethodSelection = document.getElementById('payment-method-selection');
-    const purchaseButton = document.getElementById('purchase-button');
-    
-    // Show/hide payment details based on selected method
-    function togglePaymentDetails() {
-        const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
-        
-        // Hide all payment details first
-        paymentDetails.forEach(detail => {
-            detail.classList.add('hidden');
-        });
-        
-        // Show the selected payment method details
-        if (selectedMethod === 'credit_card') {
-            document.getElementById('credit-card-details').classList.remove('hidden');
-        } else if (selectedMethod === 'mobile_money') {
-            document.getElementById('mobile-money-details').classList.remove('hidden');
-        }
-    }
-    
-    // Toggle payment method section based on balance checkbox
-    function togglePaymentMethodSection() {
-        if (useBalanceCheckbox && useBalanceCheckbox.checked && <?php echo $user['balance'] >= $listing['resale_price'] ? 'true' : 'false'; ?>) {
-            paymentMethodSelection.classList.add('hidden');
-            paymentDetails.forEach(detail => {
-                detail.classList.add('hidden');
-            });
-            purchaseButton.innerHTML = '<i class="fas fa-wallet mr-2"></i> Complete Purchase Using Balance';
-        } else {
-            paymentMethodSelection.classList.remove('hidden');
-            togglePaymentDetails();
-            purchaseButton.innerHTML = '<i class="fas fa-credit-card mr-2"></i> Complete Purchase';
-        }
-    }
-    
-    // Add event listeners
-    paymentMethods.forEach(method => {
-        method.addEventListener('change', togglePaymentDetails);
-    });
-    
-    if (useBalanceCheckbox) {
-        useBalanceCheckbox.addEventListener('change', togglePaymentMethodSection);
-    }
-    
-    // Initialize
-    togglePaymentDetails();
-    if (useBalanceCheckbox) {
-        togglePaymentMethodSection();
-    }
-    
-    // Form validation
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-        const selectedMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
-        const useBalance = useBalanceCheckbox?.checked || false;
-        
-        // If using balance and balance covers total, proceed without validation
-        if (useBalance && <?php echo $user['balance'] >= $listing['resale_price'] ? 'true' : 'false'; ?>) {
-            return true;
-        }
-        
-        // Validate payment details based on selected method
-        if (selectedMethod === 'credit_card') {
-            const cardNumber = document.getElementById('card_number').value.trim();
-            const cardName = document.getElementById('card_name').value.trim();
-            const cardCvv = document.getElementById('card_cvv').value.trim();
-            
-            if (!cardNumber || !cardName || !cardCvv) {
-                e.preventDefault();
-                alert('Please fill in all credit card details.');
-                return false;
-            }
-        } else if (selectedMethod === 'mobile_money') {
-            const mobileNumber = document.getElementById('mobile_number').value.trim();
-            
-            if (!mobileNumber) {
-                e.preventDefault();
-                alert('Please enter your mobile number.');
-                return false;
-            }
-        }
-    });
-});
-</script>
-
+<?php include 'checkout-js.php'; ?>
 <?php include 'includes/footer.php'; ?>
