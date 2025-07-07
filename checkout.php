@@ -309,7 +309,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
                             <label class="flex items-center cursor-pointer">
                                 <input type="checkbox" name="use_balance" id="use_balance"
                                     class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500"
-                                    <?php echo $user['balance'] >= $total ? 'checked' : ''; ?>>
+                                    <?php if ($user['balance'] >= $total): ?>checked
+                                    required<?php else: ?><?php echo $user['balance'] >= $total ? 'checked' : ''; ?><?php endif; ?>
+                                    <?php if ($user['balance'] >= $total): ?>onclick="return false;" tabindex="-1"
+                                    <?php endif; ?>>
+                                <?php if ($user['balance'] >= $total): ?>
+                                <input type="hidden" name="use_balance" value="on">
+                                <?php endif; ?>
                                 <div class="ml-3">
                                     <span class="font-medium text-green-800">
                                         Use my account balance (<?php echo formatCurrency($user['balance']); ?>
@@ -323,8 +329,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
                                         charged to your selected payment method.
                                     </p>
                                     <?php else: ?>
-                                    <p class="text-sm text-green-700 mt-1">
-                                        Your balance is sufficient to cover the entire purchase.
+                                    <p class="text-sm text-green-700 mt-1 font-semibold">
+                                        Your balance is sufficient to cover the entire purchase.<br>
+                                        <span class="text-red-600">Account balance will be used automatically. You
+                                            cannot deselect this option.</span>
                                     </p>
                                     <?php endif; ?>
                                 </div>
