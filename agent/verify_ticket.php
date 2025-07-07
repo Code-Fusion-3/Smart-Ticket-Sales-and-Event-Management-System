@@ -9,8 +9,119 @@ require_once '../includes/auth.php';
 checkPermission('agent');
 
 $agentId = getCurrentUserId();
+
 $result = null;
 $error = '';
+
+// Check for ticket data in query parameters (for direct scan)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ticket_id'], $_GET['event_id'], $_GET['user_id'], $_GET['verification_token'])) {
+    $ticketId = trim($_GET['ticket_id']);
+    $eventId = trim($_GET['event_id']);
+    $userId = trim($_GET['user_id']);
+    $verificationToken = trim($_GET['verification_token']);
+
+    // Try to find ticket by ID, event, user, and QR code
+    $sql = "SELECT 
+                t.*,
+                e.title as event_title,
+                e.start_date,
+                e.start_time,
+                e.end_date,
+                e.end_time,
+                e.venue,
+                e.address,
+                e.city,
+                tt.name as ticket_type,
+                u.username as planner_name
+            FROM tickets t
+            JOIN events e ON t.event_id = e.id
+            LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id
+            LEFT JOIN users u ON e.planner_id = u.id
+            WHERE t.id = '" . $db->escape($ticketId) . "' 
+                AND t.event_id = '" . $db->escape($eventId) . "' 
+                AND t.user_id = '" . $db->escape($userId) . "' 
+                AND t.qr_code = '" . $db->escape($verificationToken) . "' 
+                AND t.status = 'sold'";
+    $ticket = $db->fetchOne($sql);
+
+    if (!$ticket) {
+        $result = [
+            'status' => 'rejected',
+            'message' => 'Ticket not found or invalid'
+        ];
+    } else {
+        // Determine event type (single day or multi-day)
+        $today = date('Y-m-d');
+        $eventStart = $ticket['start_date'];
+        $eventEnd = $ticket['end_date'];
+
+        if ($eventStart === $eventEnd) {
+            // Single day event: verify only on event day, only once
+            if ($today !== $eventStart) {
+                $result = [
+                    'status' => 'rejected',
+                    'message' => 'Event is not today',
+                    'ticket' => $ticket
+                ];
+            } else {
+                // Check if ticket has already been used (any scan)
+                $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
+                $scanCount = $db->fetchOne($sql);
+                if ($scanCount['scan_count'] > 0) {
+                    $result = [
+                        'status' => 'duplicate',
+                        'message' => 'Ticket has already been scanned',
+                        'ticket' => $ticket
+                    ];
+                } else {
+                    $result = [
+                        'status' => 'verified',
+                        'message' => 'Ticket is valid',
+                        'ticket' => $ticket
+                    ];
+                }
+            }
+        } else {
+            // Multi-day event: verify only on event days, allow once per day
+            if ($today < $eventStart || $today > $eventEnd) {
+                $result = [
+                    'status' => 'rejected',
+                    'message' => 'Event is not today',
+                    'ticket' => $ticket
+                ];
+            } else {
+                // Check if ticket has already been scanned today
+                $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'] . " AND DATE(verification_time) = '" . $db->escape($today) . "'";
+                $scanCount = $db->fetchOne($sql);
+                if ($scanCount['scan_count'] > 0) {
+                    $result = [
+                        'status' => 'duplicate',
+                        'message' => 'Ticket has already been scanned today',
+                        'ticket' => $ticket
+                    ];
+                } else {
+                    $result = [
+                        'status' => 'verified',
+                        'message' => 'Ticket is valid for today',
+                        'ticket' => $ticket
+                    ];
+                }
+            }
+        }
+
+        // Record the verification
+        $status = $result['status'];
+        $sql = "INSERT INTO ticket_verifications (ticket_id, agent_id, verification_time, status, notes, created_at) 
+                VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '', NOW())";
+        $db->query($sql);
+
+        // Update ticket status if verified and single day event
+        if ($status === 'verified' && $eventStart === $eventEnd) {
+            $sql = "UPDATE tickets SET status = 'used', updated_at = NOW() WHERE id = " . $ticket['id'];
+            $db->query($sql);
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ticketId = trim($_POST['ticket_id'] ?? '');
@@ -19,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($ticketId)) {
         $error = "Please enter a ticket ID or QR code";
     } else {
-        // Try to find ticket by ID or QR code
+        // Try to find ticket by ID or QR code (manual entry)
         $sql = "SELECT 
                     t.*,
                     e.title as event_title,
@@ -47,45 +158,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'message' => 'Ticket not found or invalid'
             ];
         } else {
-            // Check if ticket has already been used
-            $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
-            $scanCount = $db->fetchOne($sql);
+            // Determine event type (single day or multi-day)
+            $today = date('Y-m-d');
+            $eventStart = $ticket['start_date'];
+            $eventEnd = $ticket['end_date'];
 
-            if ($scanCount['scan_count'] > 0) {
-                $result = [
-                    'status' => 'duplicate',
-                    'message' => 'Ticket has already been scanned',
-                    'ticket' => $ticket
-                ];
-            } else {
-                // Check if event is today
-                $today = date('Y-m-d');
-                $eventDate = $ticket['start_date'];
-
-                if ($eventDate !== $today) {
+            if ($eventStart === $eventEnd) {
+                // Single day event: verify only on event day, only once
+                if ($today !== $eventStart) {
                     $result = [
                         'status' => 'rejected',
                         'message' => 'Event is not today',
                         'ticket' => $ticket
                     ];
                 } else {
-                    // Ticket is valid
+                    // Check if ticket has already been used (any scan)
+                    $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
+                    $scanCount = $db->fetchOne($sql);
+                    if ($scanCount['scan_count'] > 0) {
+                        $result = [
+                            'status' => 'duplicate',
+                            'message' => 'Ticket has already been scanned',
+                            'ticket' => $ticket
+                        ];
+                    } else {
+                        $result = [
+                            'status' => 'verified',
+                            'message' => 'Ticket is valid',
+                            'ticket' => $ticket
+                        ];
+                    }
+                }
+            } else {
+                // Multi-day event: verify only on event days, allow once per day
+                if ($today < $eventStart || $today > $eventEnd) {
                     $result = [
-                        'status' => 'verified',
-                        'message' => 'Ticket is valid',
+                        'status' => 'rejected',
+                        'message' => 'Event is not today',
                         'ticket' => $ticket
                     ];
+                } else {
+                    // Check if ticket has already been scanned today
+                    $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'] . " AND DATE(verification_time) = '" . $db->escape($today) . "'";
+                    $scanCount = $db->fetchOne($sql);
+                    if ($scanCount['scan_count'] > 0) {
+                        $result = [
+                            'status' => 'duplicate',
+                            'message' => 'Ticket has already been scanned today',
+                            'ticket' => $ticket
+                        ];
+                    } else {
+                        $result = [
+                            'status' => 'verified',
+                            'message' => 'Ticket is valid for today',
+                            'ticket' => $ticket
+                        ];
+                    }
                 }
             }
 
             // Record the verification
             $status = $result['status'];
             $sql = "INSERT INTO ticket_verifications (ticket_id, agent_id, verification_time, status, notes, created_at) 
-                    VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '" . $db->escape($notes) . "', NOW())";
+                VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '" . $db->escape($notes) . "', NOW())";
             $db->query($sql);
 
-            // Update ticket status if verified
-            if ($status === 'verified') {
+            // Update ticket status if verified and single day event
+            if ($status === 'verified' && $eventStart === $eventEnd) {
                 $sql = "UPDATE tickets SET status = 'used', updated_at = NOW() WHERE id = " . $ticket['id'];
                 $db->query($sql);
             }
@@ -186,13 +325,15 @@ include '../includes/agent_header.php';
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Event</label>
                                     <p class="text-sm text-gray-900">
-                                        <?php echo htmlspecialchars($result['ticket']['event_title']); ?></p>
+                                        <?php echo htmlspecialchars($result['ticket']['event_title']); ?>
+                                    </p>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Ticket Type</label>
                                     <p class="text-sm text-gray-900">
-                                        <?php echo htmlspecialchars($result['ticket']['ticket_type'] ?? 'General'); ?></p>
+                                        <?php echo htmlspecialchars($result['ticket']['ticket_type'] ?? 'General'); ?>
+                                    </p>
                                 </div>
 
                                 <div>
@@ -212,25 +353,29 @@ include '../includes/agent_header.php';
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Recipient Name</label>
                                     <p class="text-sm text-gray-900">
-                                        <?php echo htmlspecialchars($result['ticket']['recipient_name'] ?? 'N/A'); ?></p>
+                                        <?php echo htmlspecialchars($result['ticket']['recipient_name'] ?? 'N/A'); ?>
+                                    </p>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Recipient Email</label>
                                     <p class="text-sm text-gray-900">
-                                        <?php echo htmlspecialchars($result['ticket']['recipient_email'] ?? 'N/A'); ?></p>
+                                        <?php echo htmlspecialchars($result['ticket']['recipient_email'] ?? 'N/A'); ?>
+                                    </p>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Purchase Price</label>
                                     <p class="text-sm text-gray-900">
-                                        <?php echo formatCurrency($result['ticket']['purchase_price']); ?></p>
+                                        <?php echo formatCurrency($result['ticket']['purchase_price']); ?>
+                                    </p>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Event Planner</label>
                                     <p class="text-sm text-gray-900">
-                                        <?php echo htmlspecialchars($result['ticket']['planner_name']); ?></p>
+                                        <?php echo htmlspecialchars($result['ticket']['planner_name']); ?>
+                                    </p>
                                 </div>
                             </div>
 

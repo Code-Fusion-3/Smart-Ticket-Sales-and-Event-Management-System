@@ -64,7 +64,7 @@ $eventStatusClasses = [
 $eventStatusClass = $eventStatusClasses[$eventStatus];
 
 // Build agent scan URL with all QR code data as query parameters
-$agentScanUrl = 'http://192.168.137.73:3000/agent/verify_ticket.php?ticket_id=' . urlencode($ticketId)
+$agentScanUrl = SITE_URL.'/agent/verify_ticket.php?ticket_id=' . urlencode($ticketId)
     . '&event_id=' . urlencode($ticket['event_id'])
     . '&user_id=' . urlencode($userId)
     . '&verification_token=' . urlencode($ticket['qr_code'])
@@ -188,7 +188,7 @@ include 'includes/header.php';
                         <div class="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
                             <div class="mb-4">
                                 <div class="mx-auto w-48 h-48 bg-white p-2 border rounded-lg shadow-inner">
-                                    <a href="http://192.168.137.73:3000/agent/verify_ticket.php?ticket_id=<?php echo urlencode($ticketId); ?>"
+                                    <a href="<?= SITE_URL ?>:3000/agent/verify_ticket.php?ticket_id=<?php echo urlencode($ticketId); ?>"
                                         title="Verify/Scan this ticket">
                                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=<?php echo urlencode($qrCodeData); ?>"
                                             alt="Ticket QR Code" class="w-full h-full cursor-pointer">
