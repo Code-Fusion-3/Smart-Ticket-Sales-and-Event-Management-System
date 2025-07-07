@@ -5,7 +5,7 @@ require_once 'db.php';
 // Redirect to a specific page
 function redirect($page)
 {
-    header("Location: " . SITE_URL . "/" . $page);
+    echo "<script>window.location.href='" . SITE_URL . "/" . addslashes($page) . "';</script>";
     exit;
 }
 

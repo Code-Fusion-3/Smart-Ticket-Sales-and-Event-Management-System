@@ -50,62 +50,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ticket_id'], $_GET['eve
             'message' => 'Ticket not found or invalid'
         ];
     } else {
-        // Determine event type (single day or multi-day)
-        $today = date('Y-m-d');
-        $eventStart = $ticket['start_date'];
-        $eventEnd = $ticket['end_date'];
+        // Check if ticket has already been used
+        $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
+        $scanCount = $db->fetchOne($sql);
 
-        if ($eventStart === $eventEnd) {
-            // Single day event: verify only on event day, only once
-            if ($today !== $eventStart) {
-                $result = [
-                    'status' => 'rejected',
-                    'message' => 'Event is not today',
-                    'ticket' => $ticket
-                ];
-            } else {
-                // Check if ticket has already been used (any scan)
-                $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
-                $scanCount = $db->fetchOne($sql);
-                if ($scanCount['scan_count'] > 0) {
-                    $result = [
-                        'status' => 'duplicate',
-                        'message' => 'Ticket has already been scanned',
-                        'ticket' => $ticket
-                    ];
-                } else {
-                    $result = [
-                        'status' => 'verified',
-                        'message' => 'Ticket is valid',
-                        'ticket' => $ticket
-                    ];
-                }
-            }
+        if ($scanCount['scan_count'] > 0) {
+            $result = [
+                'status' => 'duplicate',
+                'message' => 'Ticket has already been scanned',
+                'ticket' => $ticket
+            ];
         } else {
-            // Multi-day event: verify only on event days, allow once per day
-            if ($today < $eventStart || $today > $eventEnd) {
+            // Check if event is today
+            $today = date('Y-m-d');
+            $eventDate = $ticket['start_date'];
+
+            if ($eventDate !== $today) {
                 $result = [
                     'status' => 'rejected',
                     'message' => 'Event is not today',
                     'ticket' => $ticket
                 ];
             } else {
-                // Check if ticket has already been scanned today
-                $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'] . " AND DATE(verification_time) = '" . $db->escape($today) . "'";
-                $scanCount = $db->fetchOne($sql);
-                if ($scanCount['scan_count'] > 0) {
-                    $result = [
-                        'status' => 'duplicate',
-                        'message' => 'Ticket has already been scanned today',
-                        'ticket' => $ticket
-                    ];
-                } else {
-                    $result = [
-                        'status' => 'verified',
-                        'message' => 'Ticket is valid for today',
-                        'ticket' => $ticket
-                    ];
-                }
+                // Ticket is valid
+                $result = [
+                    'status' => 'verified',
+                    'message' => 'Ticket is valid',
+                    'ticket' => $ticket
+                ];
             }
         }
 
@@ -115,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ticket_id'], $_GET['eve
                 VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '', NOW())";
         $db->query($sql);
 
-        // Update ticket status if verified and single day event
-        if ($status === 'verified' && $eventStart === $eventEnd) {
+        // Update ticket status if verified
+        if ($status === 'verified') {
             $sql = "UPDATE tickets SET status = 'used', updated_at = NOW() WHERE id = " . $ticket['id'];
             $db->query($sql);
         }
@@ -158,73 +130,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'message' => 'Ticket not found or invalid'
             ];
         } else {
-            // Determine event type (single day or multi-day)
-            $today = date('Y-m-d');
-            $eventStart = $ticket['start_date'];
-            $eventEnd = $ticket['end_date'];
+            // Check if ticket has already been used
+            $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
+            $scanCount = $db->fetchOne($sql);
 
-            if ($eventStart === $eventEnd) {
-                // Single day event: verify only on event day, only once
-                if ($today !== $eventStart) {
-                    $result = [
-                        'status' => 'rejected',
-                        'message' => 'Event is not today',
-                        'ticket' => $ticket
-                    ];
-                } else {
-                    // Check if ticket has already been used (any scan)
-                    $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
-                    $scanCount = $db->fetchOne($sql);
-                    if ($scanCount['scan_count'] > 0) {
-                        $result = [
-                            'status' => 'duplicate',
-                            'message' => 'Ticket has already been scanned',
-                            'ticket' => $ticket
-                        ];
-                    } else {
-                        $result = [
-                            'status' => 'verified',
-                            'message' => 'Ticket is valid',
-                            'ticket' => $ticket
-                        ];
-                    }
-                }
+            if ($scanCount['scan_count'] > 0) {
+                $result = [
+                    'status' => 'duplicate',
+                    'message' => 'Ticket has already been scanned',
+                    'ticket' => $ticket
+                ];
             } else {
-                // Multi-day event: verify only on event days, allow once per day
-                if ($today < $eventStart || $today > $eventEnd) {
+                // Check if event is today
+                $today = date('Y-m-d');
+                $eventDate = $ticket['start_date'];
+
+                if ($eventDate !== $today) {
                     $result = [
                         'status' => 'rejected',
                         'message' => 'Event is not today',
                         'ticket' => $ticket
                     ];
                 } else {
-                    // Check if ticket has already been scanned today
-                    $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'] . " AND DATE(verification_time) = '" . $db->escape($today) . "'";
-                    $scanCount = $db->fetchOne($sql);
-                    if ($scanCount['scan_count'] > 0) {
-                        $result = [
-                            'status' => 'duplicate',
-                            'message' => 'Ticket has already been scanned today',
-                            'ticket' => $ticket
-                        ];
-                    } else {
-                        $result = [
-                            'status' => 'verified',
-                            'message' => 'Ticket is valid for today',
-                            'ticket' => $ticket
-                        ];
-                    }
+                    // Ticket is valid
+                    $result = [
+                        'status' => 'verified',
+                        'message' => 'Ticket is valid',
+                        'ticket' => $ticket
+                    ];
                 }
             }
 
             // Record the verification
             $status = $result['status'];
             $sql = "INSERT INTO ticket_verifications (ticket_id, agent_id, verification_time, status, notes, created_at) 
-                VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '" . $db->escape($notes) . "', NOW())";
+                    VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '" . $db->escape($notes) . "', NOW())";
             $db->query($sql);
 
-            // Update ticket status if verified and single day event
-            if ($status === 'verified' && $eventStart === $eventEnd) {
+            // Update ticket status if verified
+            if ($status === 'verified') {
                 $sql = "UPDATE tickets SET status = 'used', updated_at = NOW() WHERE id = " . $ticket['id'];
                 $db->query($sql);
             }
