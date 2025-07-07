@@ -7,9 +7,7 @@ session_set_cookie_params([
     'path' => '/',
     'domain' => '', // Remove domain restriction for localhost with port
 ]);
-// Debugging: log session id and session content
-error_log('DEPOSIT.PHP SESSION ID: ' . session_id());
-error_log('DEPOSIT.PHP SESSION: ' . print_r($_SESSION, true));
+
 
 $pageTitle = "Deposit Funds";
 require_once 'includes/config.php';
