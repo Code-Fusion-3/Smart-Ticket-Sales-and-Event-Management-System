@@ -13,30 +13,30 @@ if (!defined('SITE_URL')) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .sidebar-link.active {
-            background-color: #3B82F6;
-            color: white;
-        }
+    .sidebar-link.active {
+        background-color: #3B82F6;
+        color: white;
+    }
 
-        /* Mobile sidebar overlay */
-        .sidebar-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 40;
-        }
+    /* Mobile sidebar overlay */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 40;
+    }
 
-        .sidebar-mobile {
-            transform: translateX(-100%);
-            transition: transform 0.3s ease-in-out;
-        }
+    .sidebar-mobile {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+    }
 
-        .sidebar-mobile.open {
-            transform: translateX(0);
-        }
+    .sidebar-mobile.open {
+        transform: translateX(0);
+    }
     </style>
 </head>
 
@@ -123,6 +123,11 @@ if (!defined('SITE_URL')) {
                         <i class="fas fa-users mr-2 sm:mr-3 text-sm sm:text-base"></i>
                         <span class="truncate">User Management</span>
                     </a>
+                    <a href="<?php echo SITE_URL; ?>/admin/agents/index.php"
+                        class="sidebar-link flex items-center px-3 sm:px-4 py-2 sm:py-3 text-gray-700 rounded-lg hover:bg-gray-100 text-sm sm:text-base <?php echo (strpos($_SERVER['REQUEST_URI'], '/admin/reports/') !== false) ? 'active' : ''; ?>">
+                        <i class="fas fa-users mr-2 sm:mr-3 text-sm sm:text-base"></i>
+                        Agents
+                    </a>
 
                     <a href="<?php echo SITE_URL; ?>/admin/events/index.php"
                         class="sidebar-link flex items-center px-3 sm:px-4 py-2 sm:py-3 text-gray-700 rounded-lg hover:bg-gray-100 text-sm sm:text-base <?php echo (strpos($_SERVER['REQUEST_URI'], '/admin/events/') !== false) ? 'active' : ''; ?>">
@@ -141,6 +146,7 @@ if (!defined('SITE_URL')) {
                         <i class="fas fa-file-alt mr-2 sm:mr-3 text-sm sm:text-base"></i>
                         Reports
                     </a>
+
 
                     <div class="border-t border-gray-200 my-3 sm:my-4"></div>
 
