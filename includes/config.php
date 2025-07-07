@@ -1,8 +1,7 @@
 <?php
 // Start session
 session_start();
-error_reporting(E_ALL); 
-ini_set('display_errors', 1);
+
 
 // Database configuration
 define('DB_HOST', 'localhost');
@@ -12,7 +11,7 @@ define('DB_NAME', 'ticket_management_system');
 
 // Website configuration
 define('SITE_NAME', 'Smart Ticket Sales and Event Management System');
-define('SITE_URL', 'http://localhost:3000');
+define('SITE_URL', 'http://192.168.137.73:3000');
 
 // File paths
 define('ROOT_PATH', dirname(__DIR__) . '/');
