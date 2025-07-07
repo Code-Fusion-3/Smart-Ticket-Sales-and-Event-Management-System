@@ -79,16 +79,16 @@ include 'includes/header.php';
     <h1 class="text-2xl font-bold mb-4 text-gray-900">Deposit Funds</h1>
     <p class="mb-6 text-gray-600">Top up your account balance to use for ticket purchases and other payments.</p>
     <?php if (!empty($errors)): ?>
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            <?php foreach ($errors as $error): ?>
-                <div><?php echo htmlspecialchars($error); ?></div>
-            <?php endforeach; ?>
-        </div>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <?php foreach ($errors as $error): ?>
+        <div><?php echo htmlspecialchars($error); ?></div>
+        <?php endforeach; ?>
+    </div>
     <?php endif; ?>
     <?php if ($success): ?>
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            Deposit successful!
-        </div>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        Deposit successful!
+    </div>
     <?php endif; ?>
     <form method="POST" class="space-y-4 bg-white p-6 rounded-lg shadow-md">
         <div>

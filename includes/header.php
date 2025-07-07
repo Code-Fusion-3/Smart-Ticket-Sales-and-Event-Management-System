@@ -32,21 +32,21 @@ require_once 'auth.php';
                     <a href="<?php echo SITE_URL; ?>" class="hover:text-indigo-200">Home</a>
                     <a href="<?php echo SITE_URL; ?>/events.php" class="hover:text-indigo-200">Events</a>
                     <?php if (isLoggedIn() === true): ?>
-                    <?php if (hasRole('admin')): ?>
-                    <a href="<?php echo SITE_URL; ?>/admin" class="hover:text-indigo-200">Admin Dashboard</a>
-                    <?php elseif (hasRole('event_planner')): ?>
-                    <a href="<?php echo SITE_URL; ?>/planner" class="hover:text-indigo-200">Planner Dashboard</a>
-                    <?php elseif (hasRole('agent')): ?>
-                    <a href="<?php echo SITE_URL; ?>/agent" class="hover:text-indigo-200">Agent Dashboard</a>
-                    <?php elseif (hasRole('customer')): ?>
-                    <a href="<?php echo SITE_URL; ?>/profile.php" class="hover:text-indigo-200 hidden">Profile</a>
-                    <a href="<?php echo SITE_URL; ?>/my-tickets.php" class="hover:text-indigo-200">My Tickets</a>
-                    <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
-                    <a href="<?php echo SITE_URL; ?>/transactions.php"
-                        class="hover:text-indigo-200 hidden">Transactions</a>
-                    <a href="<?php echo SITE_URL; ?>/cart.php" class="hover:text-indigo-200">
-                        <i class="fas fa-shopping-cart"></i> Cart
-                        <?php
+                        <?php if (hasRole('admin')): ?>
+                            <a href="<?php echo SITE_URL; ?>/admin" class="hover:text-indigo-200">Admin Dashboard</a>
+                        <?php elseif (hasRole('event_planner')): ?>
+                            <a href="<?php echo SITE_URL; ?>/planner" class="hover:text-indigo-200">Planner Dashboard</a>
+                        <?php elseif (hasRole('agent')): ?>
+                            <a href="<?php echo SITE_URL; ?>/agent" class="hover:text-indigo-200">Agent Dashboard</a>
+                        <?php elseif (hasRole('customer')): ?>
+                            <a href="<?php echo SITE_URL; ?>/profile.php" class="hover:text-indigo-200 hidden">Profile</a>
+                            <a href="<?php echo SITE_URL; ?>/my-tickets.php" class="hover:text-indigo-200">My Tickets</a>
+                            <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
+                            <a href="<?php echo SITE_URL; ?>/transactions.php"
+                                class="hover:text-indigo-200 hidden">Transactions</a>
+                            <a href="<?php echo SITE_URL; ?>/cart.php" class="hover:text-indigo-200">
+                                <i class="fas fa-shopping-cart"></i> Cart
+                                <?php
                                 // Get cart count
                                 global $db;
                                 $userId = getCurrentUserId();
@@ -60,17 +60,18 @@ require_once 'auth.php';
                                     echo "<span class='bg-red-500 text-white rounded-full px-2 py-1 text-xs'>$cartCount</span>";
                                 }
                                 ?>
-                    </a>
-                    <?php endif; ?>
-                    <a href="<?php echo SITE_URL; ?>/logout.php" class="hover:text-indigo-200">Logout</a>
-                    <?php if (isLoggedIn()): ?>
-                    <li><a href="deposit.php" class="hover:text-indigo-600 font-semibold">Deposit Funds</a></li>
-                    <?php endif; ?>
+                            </a>
+                        <?php endif; ?>
+                        <a href="<?php echo SITE_URL; ?>/logout.php" class="hover:text-indigo-200">Logout</a>
+                        <?php if (isLoggedIn()): ?>
+                            <li><a href="deposit.php" class="hover:text-indigo-600 font-semibold">Deposit Funds</a></li>
+                            <li><a href="finances.php" class="hover:text-indigo-600 font-semibold">Finances</a></li>
+                        <?php endif; ?>
                     <?php else: ?>
-                    <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
+                        <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
 
-                    <a href="<?php echo SITE_URL; ?>/login.php" class="hover:text-indigo-200">Login</a>
-                    <a href="<?php echo SITE_URL; ?>/register.php" class="hover:text-indigo-200">Register</a>
+                        <a href="<?php echo SITE_URL; ?>/login.php" class="hover:text-indigo-200">Login</a>
+                        <a href="<?php echo SITE_URL; ?>/register.php" class="hover:text-indigo-200">Register</a>
                     <?php endif; ?>
                 </nav>
 
@@ -85,28 +86,29 @@ require_once 'auth.php';
                 <a href="<?php echo SITE_URL; ?>" class="block py-2 hover:text-indigo-200">Home</a>
                 <a href="<?php echo SITE_URL; ?>/events.php" class="block py-2 hover:text-indigo-200">Events</a>
                 <?php if (isLoggedIn()): ?>
-                <?php if (hasRole('admin')): ?>
-                <a href="<?php echo SITE_URL; ?>/admin" class="block py-2 hover:text-indigo-200">Admin Dashboard</a>
-                <?php elseif (hasRole('event_planner')): ?>
-                <a href="<?php echo SITE_URL; ?>/planner" class="block py-2 hover:text-indigo-200">Planner Dashboard</a>
-                <?php elseif (hasRole('agent')): ?>
-                <a href="<?php echo SITE_URL; ?>/agent" class="block py-2 hover:text-indigo-200">Agent Dashboard</a>
+                    <?php if (hasRole('admin')): ?>
+                        <a href="<?php echo SITE_URL; ?>/admin" class="block py-2 hover:text-indigo-200">Admin Dashboard</a>
+                    <?php elseif (hasRole('event_planner')): ?>
+                        <a href="<?php echo SITE_URL; ?>/planner" class="block py-2 hover:text-indigo-200">Planner Dashboard</a>
+                    <?php elseif (hasRole('agent')): ?>
+                        <a href="<?php echo SITE_URL; ?>/agent" class="block py-2 hover:text-indigo-200">Agent Dashboard</a>
+                    <?php else: ?>
+                        <a href="<?php echo SITE_URL; ?>/profile.php" class="block py-2 hover:text-indigo-200">Profile</a>
+                        <a href="<?php echo SITE_URL; ?>/my-tickets.php" class="block py-2 hover:text-indigo-200">My Tickets</a>
+                        <a href="<?php echo SITE_URL; ?>/transactions.php"
+                            class="block py-2 hover:text-indigo-200">Transactions</a>
+                        <a href="<?php echo SITE_URL; ?>/cart.php" class="block py-2 hover:text-indigo-200">
+                            <i class="fas fa-shopping-cart"></i> Cart
+                        </a>
+                    <?php endif; ?>
+                    <a href="<?php echo SITE_URL; ?>/logout.php" class="block py-2 hover:text-indigo-200">Logout</a>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="deposit.php" class="block py-2 hover:text-indigo-600 font-semibold">Deposit Funds</a></li>
+                        <li><a href="finances.php" class="block py-2 hover:text-indigo-600 font-semibold">Finances</a></li>
+                    <?php endif; ?>
                 <?php else: ?>
-                <a href="<?php echo SITE_URL; ?>/profile.php" class="block py-2 hover:text-indigo-200">Profile</a>
-                <a href="<?php echo SITE_URL; ?>/my-tickets.php" class="block py-2 hover:text-indigo-200">My Tickets</a>
-                <a href="<?php echo SITE_URL; ?>/transactions.php"
-                    class="block py-2 hover:text-indigo-200">Transactions</a>
-                <a href="<?php echo SITE_URL; ?>/cart.php" class="block py-2 hover:text-indigo-200">
-                    <i class="fas fa-shopping-cart"></i> Cart
-                </a>
-                <?php endif; ?>
-                <a href="<?php echo SITE_URL; ?>/logout.php" class="block py-2 hover:text-indigo-200">Logout</a>
-                <?php if (isLoggedIn()): ?>
-                <li><a href="deposit.php" class="block py-2 hover:text-indigo-600 font-semibold">Deposit Funds</a></li>
-                <?php endif; ?>
-                <?php else: ?>
-                <a href="<?php echo SITE_URL; ?>/login.php" class="block py-2 hover:text-indigo-200">Login</a>
-                <a href="<?php echo SITE_URL; ?>/register.php" class="block py-2 hover:text-indigo-200">Register</a>
+                    <a href="<?php echo SITE_URL; ?>/login.php" class="block py-2 hover:text-indigo-200">Login</a>
+                    <a href="<?php echo SITE_URL; ?>/register.php" class="block py-2 hover:text-indigo-200">Register</a>
                 <?php endif; ?>
             </div>
         </div>
