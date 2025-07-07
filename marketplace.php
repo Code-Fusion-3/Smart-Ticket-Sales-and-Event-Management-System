@@ -69,6 +69,10 @@ $countSql = "SELECT COUNT(*) as total
              LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id
              $whereClause";
 
+// Add: Only show resale tickets for ticket types that are sold out (available_tickets = 0)
+// If ticket_type_id is NULL, allow listing (for backward compatibility)
+$countSql .= " AND (t.ticket_type_id IS NULL OR tt.available_tickets = 0)";
+
 $totalResult = $db->fetchOne($countSql, $params);
 $totalListings = $totalResult['total'];
 $totalPages = ceil($totalListings / $perPage);
@@ -84,6 +88,7 @@ $sql = "SELECT tr.*, t.id as ticket_id, t.purchase_price as original_price,
         LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id
         JOIN users u ON tr.seller_id = u.id
         $whereClause
+        AND (t.ticket_type_id IS NULL OR tt.available_tickets = 0)
         $orderClause
         LIMIT $offset, $perPage";
 

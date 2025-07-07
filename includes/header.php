@@ -64,6 +64,8 @@ require_once 'auth.php';
                     <?php endif; ?>
                     <a href="<?php echo SITE_URL; ?>/logout.php" class="hover:text-indigo-200">Logout</a>
                     <?php else: ?>
+                    <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
+
                     <a href="<?php echo SITE_URL; ?>/login.php" class="hover:text-indigo-200">Login</a>
                     <a href="<?php echo SITE_URL; ?>/register.php" class="hover:text-indigo-200">Register</a>
                     <?php endif; ?>
