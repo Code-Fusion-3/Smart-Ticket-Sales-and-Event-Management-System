@@ -91,13 +91,13 @@ $topPlanners = $db->fetchAll($topPlannersSql);
 
 // Summary Statistics
 $summarySql = "SELECT 
-                    (SELECT COUNT(*) FROM users WHERE DATE(created_at) BETWEEN $startDate AND $endDate) as new_users,
-                    (SELECT COUNT(*) FROM events WHERE DATE(created_at) BETWEEN $startDate AND $endDate) as new_events,
-                    (SELECT COUNT(*) FROM tickets WHERE status = 'sold' AND DATE(created_at) BETWEEN $startDate AND $endDate) as tickets_sold,
-                    (SELECT SUM(amount) FROM transactions WHERE type = 'purchase' AND status = 'completed' AND DATE(created_at) BETWEEN $startDate AND $endDate) as ticket_revenue,
-                    (SELECT SUM(amount) FROM transactions WHERE type = 'system_fee' AND status = 'completed' AND DATE(created_at) BETWEEN $startDate AND $endDate) as system_fees,
-                    (SELECT COUNT(*) FROM withdrawals WHERE DATE(created_at) BETWEEN $startDate AND $endDate) as withdrawal_requests,
-                    (SELECT SUM(amount) FROM withdrawals WHERE status = 'completed' AND DATE(created_at) BETWEEN $startDate AND $endDate) as withdrawals_completed";
+    (SELECT COUNT(*) FROM users WHERE DATE(created_at) BETWEEN '$startDate' AND '$endDate') as new_users,
+    (SELECT COUNT(*) FROM events WHERE DATE(created_at) BETWEEN '$startDate' AND '$endDate') as new_events,
+    (SELECT COUNT(*) FROM tickets WHERE status = 'sold' AND DATE(created_at) BETWEEN '$startDate' AND '$endDate') as tickets_sold,
+    (SELECT SUM(amount) FROM transactions WHERE type = 'purchase' AND status = 'completed' AND DATE(created_at) BETWEEN '$startDate' AND '$endDate') as ticket_revenue,
+    (SELECT SUM(amount) FROM transactions WHERE type = 'system_fee' AND status = 'completed' AND DATE(created_at) BETWEEN '$startDate' AND '$endDate') as system_fees,
+    (SELECT COUNT(*) FROM withdrawals WHERE DATE(created_at) BETWEEN '$startDate' AND '$endDate') as withdrawal_requests,
+    (SELECT SUM(amount) FROM withdrawals WHERE status = 'completed' AND DATE(created_at) BETWEEN '$startDate' AND '$endDate') as withdrawals_completed";
 $summary = $db->fetchOne($summarySql);
 
 include '../../includes/admin_header.php';
@@ -157,7 +157,8 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm sm:text-lg font-semibold text-gray-900">New Users</h3>
                     <p class="text-xl sm:text-2xl font-bold text-blue-600">
-                        <?php echo number_format($summary['new_users'] ?? 0); ?></p>
+                        <?php echo number_format($summary['new_users'] ?? 0); ?>
+                    </p>
                     <p class="text-xs sm:text-sm text-gray-500">Registered in period</p>
                 </div>
             </div>
@@ -172,7 +173,8 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm sm:text-lg font-semibold text-gray-900">New Events</h3>
                     <p class="text-xl sm:text-2xl font-bold text-green-600">
-                        <?php echo number_format($summary['new_events'] ?? 0); ?></p>
+                        <?php echo number_format($summary['new_events'] ?? 0); ?>
+                    </p>
                     <p class="text-xs sm:text-sm text-gray-500">Created in period</p>
                 </div>
             </div>
@@ -187,7 +189,8 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm sm:text-lg font-semibold text-gray-900">Tickets Sold</h3>
                     <p class="text-xl sm:text-2xl font-bold text-purple-600">
-                        <?php echo number_format($summary['tickets_sold'] ?? 0); ?></p>
+                        <?php echo number_format($summary['tickets_sold'] ?? 0); ?>
+                    </p>
                     <p class="text-xs sm:text-sm text-gray-500">Total sales</p>
                 </div>
             </div>
@@ -202,7 +205,8 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm sm:text-lg font-semibold text-gray-900">Revenue</h3>
                     <p class="text-xl sm:text-2xl font-bold text-yellow-600">
-                        <?php echo formatCurrency($summary['ticket_revenue'] ?? 0); ?></p>
+                        <?php echo formatCurrency($summary['ticket_revenue'] ?? 0); ?>
+                    </p>
                     <p class="text-xs sm:text-sm text-gray-500">Ticket sales</p>
                 </div>
             </div>
@@ -217,7 +221,8 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm sm:text-lg font-semibold text-gray-900">System Fees</h3>
                     <p class="text-xl sm:text-2xl font-bold text-indigo-600">
-                        <?php echo formatCurrency($summary['system_fees'] ?? 0); ?></p>
+                        <?php echo formatCurrency($summary['system_fees'] ?? 0); ?>
+                    </p>
                     <p class="text-xs sm:text-sm text-gray-500">Platform earnings</p>
                 </div>
             </div>
@@ -232,7 +237,8 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm sm:text-lg font-semibold text-gray-900">Withdrawals</h3>
                     <p class="text-xl sm:text-2xl font-bold text-red-600">
-                        <?php echo number_format($summary['withdrawal_requests'] ?? 0); ?></p>
+                        <?php echo number_format($summary['withdrawal_requests'] ?? 0); ?>
+                    </p>
                     <p class="text-xs sm:text-sm text-gray-500">Total requests</p>
                 </div>
             </div>
@@ -247,7 +253,8 @@ include '../../includes/admin_header.php';
                 <div class="ml-4">
                     <h3 class="text-sm sm:text-lg font-semibold text-gray-900">Paid Out</h3>
                     <p class="text-xl sm:text-2xl font-bold text-teal-600">
-                        <?php echo formatCurrency($summary['withdrawals_completed'] ?? 0); ?></p>
+                        <?php echo formatCurrency($summary['withdrawals_completed'] ?? 0); ?>
+                    </p>
                     <p class="text-xs sm:text-sm text-gray-500">Completed withdrawals</p>
                 </div>
             </div>
@@ -261,7 +268,7 @@ include '../../includes/admin_header.php';
                 </div>
                 <div class="ml-4">
                     <h3 class="text-sm sm:text-lg font-semibold text-gray-900">Profit Margin</h3>
-                    <?php 
+                    <?php
                     $revenue = $summary['ticket_revenue'] ?? 0;
                     $fees = $summary['system_fees'] ?? 0;
                     $margin = $revenue > 0 ? round(($fees / $revenue) * 100, 1) : 0;
@@ -298,51 +305,51 @@ include '../../includes/admin_header.php';
         <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <h3 class="text-lg font-semibold mb-4">Top Performing Events</h3>
             <?php if (empty($topEvents)): ?>
-            <p class="text-gray-500 text-center py-8">No events found for the selected period</p>
+                <p class="text-gray-500 text-center py-8">No events found for the selected period</p>
             <?php else: ?>
-            <div class="overflow-x-auto">
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2 text-sm font-medium text-gray-500">Event</th>
-                            <th class="text-left py-2 text-sm font-medium text-gray-500">Planner</th>
-                            <th class="text-left py-2 text-sm font-medium text-gray-500">Sold</th>
-                            <th class="text-left py-2 text-sm font-medium text-gray-500">Revenue</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($topEvents as $index => $event): ?>
-                        <tr class="border-b">
-                            <td class="py-2">
-                                <div class="flex items-center">
-                                    <span
-                                        class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2 py-1 rounded-full mr-2">
-                                        #<?php echo $index + 1; ?>
-                                    </span>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900 truncate max-w-32">
-                                            <?php echo htmlspecialchars($event['title']); ?>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2 text-sm font-medium text-gray-500">Event</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-500">Planner</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-500">Sold</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-500">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($topEvents as $index => $event): ?>
+                                <tr class="border-b">
+                                    <td class="py-2">
+                                        <div class="flex items-center">
+                                            <span
+                                                class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2 py-1 rounded-full mr-2">
+                                                #<?php echo $index + 1; ?>
+                                            </span>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-900 truncate max-w-32">
+                                                    <?php echo htmlspecialchars($event['title']); ?>
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    <?php echo formatDate($event['start_date']); ?>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="text-xs text-gray-500">
-                                            <?php echo formatDate($event['start_date']); ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="py-2 text-sm text-gray-900">
-                                <?php echo htmlspecialchars($event['planner']); ?>
-                            </td>
-                            <td class="py-2 text-sm font-medium">
-                                <?php echo number_format($event['tickets_sold']); ?>
-                            </td>
-                            <td class="py-2 text-sm font-bold text-green-600">
-                                <?php echo formatCurrency($event['total_revenue']); ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                                    </td>
+                                    <td class="py-2 text-sm text-gray-900">
+                                        <?php echo htmlspecialchars($event['planner']); ?>
+                                    </td>
+                                    <td class="py-2 text-sm font-medium">
+                                        <?php echo number_format($event['tickets_sold']); ?>
+                                    </td>
+                                    <td class="py-2 text-sm font-bold text-green-600">
+                                        <?php echo formatCurrency($event['total_revenue']); ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -350,51 +357,51 @@ include '../../includes/admin_header.php';
         <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <h3 class="text-lg font-semibold mb-4">Top Event Planners</h3>
             <?php if (empty($topPlanners)): ?>
-            <p class="text-gray-500 text-center py-8">No planners found for the selected period</p>
+                <p class="text-gray-500 text-center py-8">No planners found for the selected period</p>
             <?php else: ?>
-            <div class="overflow-x-auto">
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left py-2 text-sm font-medium text-gray-500">Planner</th>
-                            <th class="text-left py-2 text-sm font-medium text-gray-500">Events</th>
-                            <th class="text-left py-2 text-sm font-medium text-gray-500">Tickets</th>
-                            <th class="text-left py-2 text-sm font-medium text-gray-500">Revenue</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($topPlanners as $index => $planner): ?>
-                        <tr class="border-b">
-                            <td class="py-2">
-                                <div class="flex items-center">
-                                    <span
-                                        class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full mr-2">
-                                        #<?php echo $index + 1; ?>
-                                    </span>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">
-                                            <?php echo htmlspecialchars($planner['username']); ?>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2 text-sm font-medium text-gray-500">Planner</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-500">Events</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-500">Tickets</th>
+                                <th class="text-left py-2 text-sm font-medium text-gray-500">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($topPlanners as $index => $planner): ?>
+                                <tr class="border-b">
+                                    <td class="py-2">
+                                        <div class="flex items-center">
+                                            <span
+                                                class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full mr-2">
+                                                #<?php echo $index + 1; ?>
+                                            </span>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    <?php echo htmlspecialchars($planner['username']); ?>
+                                                </div>
+                                                <div class="text-xs text-gray-500 truncate max-w-32">
+                                                    <?php echo htmlspecialchars($planner['email']); ?>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="text-xs text-gray-500 truncate max-w-32">
-                                            <?php echo htmlspecialchars($planner['email']); ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="py-2 text-sm">
-                                <?php echo number_format($planner['events_created']); ?>
-                            </td>
-                            <td class="py-2 text-sm">
-                                <?php echo number_format($planner['tickets_sold']); ?>
-                            </td>
-                            <td class="py-2 text-sm font-bold text-green-600">
-                                <?php echo formatCurrency($planner['total_revenue']); ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                                    </td>
+                                    <td class="py-2 text-sm">
+                                        <?php echo number_format($planner['events_created']); ?>
+                                    </td>
+                                    <td class="py-2 text-sm">
+                                        <?php echo number_format($planner['tickets_sold']); ?>
+                                    </td>
+                                    <td class="py-2 text-sm font-bold text-green-600">
+                                        <?php echo formatCurrency($planner['total_revenue']); ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
         </div>
     </div>
@@ -405,69 +412,69 @@ include '../../includes/admin_header.php';
         <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <h3 class="text-lg font-semibold mb-4">Daily Revenue Breakdown</h3>
             <?php if (empty($revenueData)): ?>
-            <p class="text-gray-500 text-center py-8">No revenue data found for the selected period</p>
+                <p class="text-gray-500 text-center py-8">No revenue data found for the selected period</p>
             <?php else: ?>
-            <div class="overflow-x-auto">
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="border-b bg-gray-50">
-                            <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
-                            <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Tickets Sold</th>
-                            <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Ticket Revenue</th>
-                            <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">System Fees</th>
-                            <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Total Revenue</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php 
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b bg-gray-50">
+                                <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
+                                <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Tickets Sold</th>
+                                <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Ticket Revenue</th>
+                                <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">System Fees</th>
+                                <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Total Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
                             $totalTickets = 0;
                             $totalTicketRevenue = 0;
                             $totalSystemFees = 0;
-                            
-                            foreach ($revenueData as $data): 
+
+                            foreach ($revenueData as $data):
                                 $totalTickets += $data['ticket_count'];
                                 $totalTicketRevenue += $data['ticket_sales'];
                                 $totalSystemFees += $data['system_fees'];
                                 $dailyTotal = $data['ticket_sales'] + $data['system_fees'];
-                            ?>
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="py-3 px-4 text-sm text-gray-900">
-                                <?php echo formatDate($data['date']); ?>
-                            </td>
-                            <td class="py-3 px-4 text-sm text-gray-900">
-                                <?php echo number_format($data['ticket_count']); ?>
-                            </td>
-                            <td class="py-3 px-4 text-sm font-medium text-green-600">
-                                <?php echo formatCurrency($data['ticket_sales']); ?>
-                            </td>
-                            <td class="py-3 px-4 text-sm font-medium text-blue-600">
-                                <?php echo formatCurrency($data['system_fees']); ?>
-                            </td>
-                            <td class="py-3 px-4 text-sm font-bold text-indigo-600">
-                                <?php echo formatCurrency($dailyTotal); ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr class="border-t-2 bg-gray-50">
-                            <td class="py-3 px-4 text-sm font-bold text-gray-900">Total</td>
-                            <td class="py-3 px-4 text-sm font-bold text-gray-900">
-                                <?php echo number_format($totalTickets); ?>
-                            </td>
-                            <td class="py-3 px-4 text-sm font-bold text-green-600">
-                                <?php echo formatCurrency($totalTicketRevenue); ?>
-                            </td>
-                            <td class="py-3 px-4 text-sm font-bold text-blue-600">
-                                <?php echo formatCurrency($totalSystemFees); ?>
-                            </td>
-                            <td class="py-3 px-4 text-sm font-bold text-indigo-600">
-                                <?php echo formatCurrency($totalTicketRevenue + $totalSystemFees); ?>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+                                ?>
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="py-3 px-4 text-sm text-gray-900">
+                                        <?php echo formatDate($data['date']); ?>
+                                    </td>
+                                    <td class="py-3 px-4 text-sm text-gray-900">
+                                        <?php echo number_format($data['ticket_count']); ?>
+                                    </td>
+                                    <td class="py-3 px-4 text-sm font-medium text-green-600">
+                                        <?php echo formatCurrency($data['ticket_sales']); ?>
+                                    </td>
+                                    <td class="py-3 px-4 text-sm font-medium text-blue-600">
+                                        <?php echo formatCurrency($data['system_fees']); ?>
+                                    </td>
+                                    <td class="py-3 px-4 text-sm font-bold text-indigo-600">
+                                        <?php echo formatCurrency($dailyTotal); ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t-2 bg-gray-50">
+                                <td class="py-3 px-4 text-sm font-bold text-gray-900">Total</td>
+                                <td class="py-3 px-4 text-sm font-bold text-gray-900">
+                                    <?php echo number_format($totalTickets); ?>
+                                </td>
+                                <td class="py-3 px-4 text-sm font-bold text-green-600">
+                                    <?php echo formatCurrency($totalTicketRevenue); ?>
+                                </td>
+                                <td class="py-3 px-4 text-sm font-bold text-blue-600">
+                                    <?php echo formatCurrency($totalSystemFees); ?>
+                                </td>
+                                <td class="py-3 px-4 text-sm font-bold text-indigo-600">
+                                    <?php echo formatCurrency($totalTicketRevenue + $totalSystemFees); ?>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             <?php endif; ?>
         </div>
     </div>
@@ -476,159 +483,159 @@ include '../../includes/admin_header.php';
 <!-- Chart.js for analytics charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Revenue Chart
-    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-    const revenueData = <?php echo json_encode($revenueData); ?>;
+    document.addEventListener('DOMContentLoaded', function () {
+        // Revenue Chart
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        const revenueData = <?php echo json_encode($revenueData); ?>;
 
-    const revenueChart = new Chart(revenueCtx, {
-        type: 'line',
-        data: {
-            labels: revenueData.map(item => {
-                const date = new Date(item.date);
-                return date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                });
-            }),
-            datasets: [{
-                label: 'Ticket Sales',
-                data: revenueData.map(item => parseFloat(item.ticket_sales)),
-                borderColor: 'rgb(34, 197, 94)',
-                backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                tension: 0.1
-            }, {
-                label: 'System Fees',
-                data: revenueData.map(item => parseFloat(item.system_fees)),
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'Rwf' + value.toLocaleString();
+        const revenueChart = new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: revenueData.map(item => {
+                    const date = new Date(item.date);
+                    return date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }),
+                datasets: [{
+                    label: 'Ticket Sales',
+                    data: revenueData.map(item => parseFloat(item.ticket_sales)),
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: 'System Fees',
+                    data: revenueData.map(item => parseFloat(item.system_fees)),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return 'Rwf' + value.toLocaleString();
+                            }
                         }
                     }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': Rwf' + context.parsed.y
-                                .toLocaleString();
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return context.dataset.label + ': Rwf' + context.parsed.y
+                                    .toLocaleString();
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        });
 
-    // User Registration Chart
-    const userCtx = document.getElementById('userChart').getContext('2d');
-    const userData = <?php echo json_encode($userData); ?>;
+        // User Registration Chart
+        const userCtx = document.getElementById('userChart').getContext('2d');
+        const userData = <?php echo json_encode($userData); ?>;
 
-    const userChart = new Chart(userCtx, {
-        type: 'bar',
-        data: {
-            labels: userData.map(item => {
-                const date = new Date(item.date);
-                return date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                });
-            }),
-            datasets: [{
-                label: 'Customers',
-                data: userData.map(item => parseInt(item.customers)),
-                backgroundColor: 'rgba(168, 85, 247, 0.8)',
-                borderColor: 'rgb(168, 85, 247)',
-                borderWidth: 1
-            }, {
-                label: 'Event Planners',
-                data: userData.map(item => parseInt(item.planners)),
-                backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                borderColor: 'rgb(34, 197, 94)',
-                borderWidth: 1
-            }, {
-                label: 'Agents',
-                data: userData.map(item => parseInt(item.agents)),
-                backgroundColor: 'rgba(249, 115, 22, 0.8)',
-                borderColor: 'rgb(249, 115, 22)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
+        const userChart = new Chart(userCtx, {
+            type: 'bar',
+            data: {
+                labels: userData.map(item => {
+                    const date = new Date(item.date);
+                    return date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }),
+                datasets: [{
+                    label: 'Customers',
+                    data: userData.map(item => parseInt(item.customers)),
+                    backgroundColor: 'rgba(168, 85, 247, 0.8)',
+                    borderColor: 'rgb(168, 85, 247)',
+                    borderWidth: 1
+                }, {
+                    label: 'Event Planners',
+                    data: userData.map(item => parseInt(item.planners)),
+                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                    borderColor: 'rgb(34, 197, 94)',
+                    borderWidth: 1
+                }, {
+                    label: 'Agents',
+                    data: userData.map(item => parseInt(item.agents)),
+                    backgroundColor: 'rgba(249, 115, 22, 0.8)',
+                    borderColor: 'rgb(249, 115, 22)',
+                    borderWidth: 1
+                }]
             },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + context.parsed.y + ' users';
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return context.dataset.label + ': ' + context.parsed.y + ' users';
+                            }
                         }
                     }
                 }
             }
-        }
+        });
     });
-});
 
-// Print functionality
-window.addEventListener('beforeprint', function() {
-    // Hide non-essential elements when printing
-    const elements = document.querySelectorAll('.no-print');
-    elements.forEach(el => el.style.display = 'none');
-});
+    // Print functionality
+    window.addEventListener('beforeprint', function () {
+        // Hide non-essential elements when printing
+        const elements = document.querySelectorAll('.no-print');
+        elements.forEach(el => el.style.display = 'none');
+    });
 
-window.addEventListener('afterprint', function() {
-    // Restore elements after printing
-    const elements = document.querySelectorAll('.no-print');
-    elements.forEach(el => el.style.display = '');
-});
+    window.addEventListener('afterprint', function () {
+        // Restore elements after printing
+        const elements = document.querySelectorAll('.no-print');
+        elements.forEach(el => el.style.display = '');
+    });
 </script>
 
 <style>
-@media print {
-    .no-print {
-        display: none !important;
-    }
+    @media print {
+        .no-print {
+            display: none !important;
+        }
 
-    .container {
-        max-width: none !important;
-        padding: 0 !important;
-    }
+        .container {
+            max-width: none !important;
+            padding: 0 !important;
+        }
 
-    .bg-white {
-        box-shadow: none !important;
-    }
+        .bg-white {
+            box-shadow: none !important;
+        }
 
-    .text-indigo-600,
-    .text-blue-600,
-    .text-green-600,
-    .text-purple-600,
-    .text-yellow-600,
-    .text-red-600,
-    .text-teal-600,
-    .text-emerald-600 {
-        color: #000 !important;
+        .text-indigo-600,
+        .text-blue-600,
+        .text-green-600,
+        .text-purple-600,
+        .text-yellow-600,
+        .text-red-600,
+        .text-teal-600,
+        .text-emerald-600 {
+            color: #000 !important;
+        }
     }
-}
 </style>
 
 <?php include '../../includes/admin_footer.php'; ?>
