@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
             'success_url' => SITE_URL . '/stripe-payment-success.php?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => SITE_URL . '/checkout.php?canceled=1',
         ]);
-        header('Location: ' . $session->url);
+        echo "<script>window.location.href='" . addslashes($session->url) . "';</script>";
         exit;
     }
 ?>
