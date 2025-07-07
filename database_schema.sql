@@ -364,7 +364,7 @@ CREATE TABLE IF NOT EXISTS email_logs (
     error_message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     sent_at TIMESTAMP NULL,
-    INDEX idx_recipient (recipient_email),
+    INDEX idx_recipient (recipient_email ),
     INDEX idx_status (status),
     INDEX idx_created (created_at)
 );
