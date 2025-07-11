@@ -15,10 +15,10 @@
                     <li><a href="<?php echo SITE_URL; ?>/events.php" class="text-gray-400 hover:text-white">Events</a>
                     </li>
                     <?php if (!isLoggedIn()): ?>
-                    <li><a href="<?php echo SITE_URL; ?>/login.php" class="text-gray-400 hover:text-white">Login</a>
-                    </li>
-                    <li><a href="<?php echo SITE_URL; ?>/register.php"
-                            class="text-gray-400 hover:text-white">Register</a></li>
+                        <li><a href="<?php echo SITE_URL; ?>/login.php" class="text-gray-400 hover:text-white">Login</a>
+                        </li>
+                        <li><a href="<?php echo SITE_URL; ?>/register.php"
+                                class="text-gray-400 hover:text-white">Register</a></li>
                     <?php endif; ?>
                 </ul>
             </div>
@@ -52,15 +52,40 @@
 
 <!-- JavaScript -->
 <script>
-// Mobile menu toggle
-const mobileMenuButton = document.getElementById('mobile-menu-button');
-const mobileMenu = document.getElementById('mobile-menu');
+    // Mobile menu toggle
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
 
-if (mobileMenuButton && mobileMenu) {
-    mobileMenuButton.addEventListener('click', () => {
-        mobileMenu.classList.toggle('hidden');
-    });
-}
+    if (mobileMenuButton && mobileMenu) {
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+    }
+
+    // User dropdown toggle
+    const userDropdownButton = document.getElementById('user-dropdown-button');
+    const userDropdown = document.getElementById('user-dropdown');
+
+    if (userDropdownButton && userDropdown) {
+        userDropdownButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!userDropdownButton.contains(e.target) && !userDropdown.contains(e.target)) {
+                userDropdown.classList.add('hidden');
+            }
+        });
+
+        // Close dropdown when pressing Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                userDropdown.classList.add('hidden');
+            }
+        });
+    }
 </script>
 <script src="<?php echo SITE_URL; ?>/assets/js/script.js"></script>
 </body>

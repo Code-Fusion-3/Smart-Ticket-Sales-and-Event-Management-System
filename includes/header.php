@@ -39,13 +39,12 @@ require_once 'auth.php';
                         <?php elseif (hasRole('agent')): ?>
                             <a href="<?php echo SITE_URL; ?>/agent" class="hover:text-indigo-200">Agent Dashboard</a>
                         <?php elseif (hasRole('customer')): ?>
-                            <a href="<?php echo SITE_URL; ?>/profile.php" class="hover:text-indigo-200 hidden">Profile</a>
-                            <a href="<?php echo SITE_URL; ?>/my-tickets.php" class="hover:text-indigo-200">My Tickets</a>
-                            <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
-                            <a href="<?php echo SITE_URL; ?>/transactions.php"
-                                class="hover:text-indigo-200 hidden">Transactions</a>
-                            <a href="<?php echo SITE_URL; ?>/cart.php" class="hover:text-indigo-200">
-                                <i class="fas fa-shopping-cart"></i> Cart
+                            <!-- Customer Navigation -->
+                            <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200 flex items-center">
+                                <i class="fas fa-store mr-1"></i>Marketplace
+                            </a>
+                            <a href="<?php echo SITE_URL; ?>/cart.php" class="hover:text-indigo-200 flex items-center relative">
+                                <i class="fas fa-shopping-cart mr-1"></i>Cart
                                 <?php
                                 // Get cart count
                                 global $db;
@@ -57,23 +56,54 @@ require_once 'auth.php';
                                 $cartCount = $result ? $result['count'] : 0;
 
                                 if ($cartCount > 0) {
-                                    echo "<span class='bg-red-500 text-white rounded-full px-2 py-1 text-xs'>$cartCount</span>";
+                                    echo "<span class='absolute -top-2 -right-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs'>$cartCount</span>";
                                 }
                                 ?>
                             </a>
                         <?php endif; ?>
-                        <a href="<?php echo SITE_URL; ?>/logout.php" class="hover:text-indigo-200">Logout</a>
-                        <?php if (isLoggedIn()): ?>
-                            <li><a href="deposit.php" class="hover:text-indigo-600 font-semibold">Deposit Funds</a></li>
-                            <li><a href="finances.php" class="hover:text-indigo-600 font-semibold">Finances</a></li>
-                        <?php endif; ?>
                     <?php else: ?>
                         <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
-
                         <a href="<?php echo SITE_URL; ?>/login.php" class="hover:text-indigo-200">Login</a>
                         <a href="<?php echo SITE_URL; ?>/register.php" class="hover:text-indigo-200">Register</a>
                     <?php endif; ?>
                 </nav>
+
+                <!-- User Profile Dropdown (for logged in users) -->
+                <?php if (isLoggedIn()): ?>
+                    <div class="hidden md:block relative">
+                        <button id="user-dropdown-button"
+                            class="flex items-center text-white hover:text-indigo-200 focus:outline-none">
+                            <div class="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center mr-2">
+                                <i class="fas fa-user text-indigo-600"></i>
+                            </div>
+                            <span><?php echo $_SESSION['username'] ?? 'User'; ?></span>
+                            <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+
+                        <div id="user-dropdown"
+                            class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden">
+                            <a href="<?php echo SITE_URL; ?>/profile.php"
+                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-user mr-2"></i>My Profile
+                            </a>
+                            <?php if (hasRole('customer')): ?>
+                                <a href="<?php echo SITE_URL; ?>/my-tickets.php"
+                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-ticket-alt mr-2"></i>My Tickets
+                                </a>
+                                <a href="<?php echo SITE_URL; ?>/finances.php"
+                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-wallet mr-2"></i>Finances
+                                </a>
+                            <?php endif; ?>
+                            <div class="border-t border-gray-100"></div>
+                            <a href="<?php echo SITE_URL; ?>/logout.php"
+                                class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <div class="md:hidden">
                     <button id="mobile-menu-button" class="text-white focus:outline-none">
@@ -92,21 +122,48 @@ require_once 'auth.php';
                         <a href="<?php echo SITE_URL; ?>/planner" class="block py-2 hover:text-indigo-200">Planner Dashboard</a>
                     <?php elseif (hasRole('agent')): ?>
                         <a href="<?php echo SITE_URL; ?>/agent" class="block py-2 hover:text-indigo-200">Agent Dashboard</a>
-                    <?php else: ?>
-                        <a href="<?php echo SITE_URL; ?>/profile.php" class="block py-2 hover:text-indigo-200">Profile</a>
-                        <a href="<?php echo SITE_URL; ?>/my-tickets.php" class="block py-2 hover:text-indigo-200">My Tickets</a>
-                        <a href="<?php echo SITE_URL; ?>/transactions.php"
-                            class="block py-2 hover:text-indigo-200">Transactions</a>
-                        <a href="<?php echo SITE_URL; ?>/cart.php" class="block py-2 hover:text-indigo-200">
-                            <i class="fas fa-shopping-cart"></i> Cart
+                    <?php elseif (hasRole('customer')): ?>
+                        <!-- Customer Mobile Navigation -->
+                        <a href="<?php echo SITE_URL; ?>/marketplace.php" class="block py-2 hover:text-indigo-200">
+                            <i class="fas fa-store mr-2"></i>Marketplace
                         </a>
+                        <a href="<?php echo SITE_URL; ?>/cart.php" class="block py-2 hover:text-indigo-200">
+                            <i class="fas fa-shopping-cart mr-2"></i>Cart
+                            <?php
+                            // Get cart count for mobile
+                            global $db;
+                            $userId = getCurrentUserId();
+                            $sql = "SELECT COUNT(ci.id) as count FROM cart_items ci 
+                                    JOIN cart c ON c.id = ci.cart_id 
+                                    WHERE c.user_id = $userId";
+                            $result = $db->fetchOne($sql);
+                            $cartCount = $result ? $result['count'] : 0;
+
+                            if ($cartCount > 0) {
+                                echo "<span class='ml-2 bg-red-500 text-white rounded-full px-2 py-1 text-xs'>$cartCount</span>";
+                            }
+                            ?>
+                        </a>
+                        <div class="border-t border-indigo-400 pt-2 mt-2">
+                            <a href="<?php echo SITE_URL; ?>/profile.php" class="block py-2 hover:text-indigo-200">
+                                <i class="fas fa-user mr-2"></i>Profile
+                            </a>
+                            <a href="<?php echo SITE_URL; ?>/my-tickets.php" class="block py-2 hover:text-indigo-200">
+                                <i class="fas fa-ticket-alt mr-2"></i>My Tickets
+                            </a>
+                            <a href="<?php echo SITE_URL; ?>/finances.php" class="block py-2 hover:text-indigo-200">
+                                <i class="fas fa-wallet mr-2"></i>Finances
+                            </a>
+                        </div>
                     <?php endif; ?>
-                    <a href="<?php echo SITE_URL; ?>/logout.php" class="block py-2 hover:text-indigo-200">Logout</a>
-                    <?php if (isLoggedIn()): ?>
-                        <li><a href="deposit.php" class="block py-2 hover:text-indigo-600 font-semibold">Deposit Funds</a></li>
-                        <li><a href="finances.php" class="block py-2 hover:text-indigo-600 font-semibold">Finances</a></li>
-                    <?php endif; ?>
+                    <div class="border-t border-indigo-400 pt-2 mt-2">
+                        <a href="<?php echo SITE_URL; ?>/logout.php" class="block py-2 hover:text-indigo-200">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </a>
+                    </div>
                 <?php else: ?>
+                    <a href="<?php echo SITE_URL; ?>/marketplace.php"
+                        class="block py-2 hover:text-indigo-200">Marketplace</a>
                     <a href="<?php echo SITE_URL; ?>/login.php" class="block py-2 hover:text-indigo-200">Login</a>
                     <a href="<?php echo SITE_URL; ?>/register.php" class="block py-2 hover:text-indigo-200">Register</a>
                 <?php endif; ?>
