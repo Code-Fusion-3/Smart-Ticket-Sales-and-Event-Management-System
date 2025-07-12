@@ -7,17 +7,18 @@
     </div>
 
     <?php if (!empty($errors)): ?>
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        <ul class="list-disc pl-4">
-            <?php foreach ($errors as $error): ?>
-            <li><?php echo $error; ?></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <ul class="list-disc pl-4">
+                <?php foreach ($errors as $error): ?>
+                    <li><?php echo $error; ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     <?php endif; ?>
 
     <div class="bg-white rounded-lg shadow-md p-6">
         <form method="POST" action="" enctype="multipart/form-data">
+            <input type="hidden" name="form_action" value="<?php echo $action; ?>">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Basic Information -->
                 <div>
@@ -36,31 +37,24 @@
                         <select id="category" name="category"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500">
                             <option value="">Select Category</option>
-                            <option value="Conference"
-                                <?php echo ($event['category'] ?? '') == 'Conference' ? 'selected' : ''; ?>>
+                            <option value="Conference" <?php echo ($event['category'] ?? '') == 'Conference' ? 'selected' : ''; ?>>
                                 Conference
                             </option>
-                            <option value="Concert"
-                                <?php echo ($event['category'] ?? '') == 'Concert' ? 'selected' : ''; ?>>Concert
+                            <option value="Concert" <?php echo ($event['category'] ?? '') == 'Concert' ? 'selected' : ''; ?>>Concert
                             </option>
-                            <option value="Exhibition"
-                                <?php echo ($event['category'] ?? '') == 'Exhibition' ? 'selected' : ''; ?>>
+                            <option value="Exhibition" <?php echo ($event['category'] ?? '') == 'Exhibition' ? 'selected' : ''; ?>>
                                 Exhibition
                             </option>
-                            <option value="Workshop"
-                                <?php echo ($event['category'] ?? '') == 'Workshop' ? 'selected' : ''; ?>>Workshop
+                            <option value="Workshop" <?php echo ($event['category'] ?? '') == 'Workshop' ? 'selected' : ''; ?>>Workshop
                             </option>
-                            <option value="Seminar"
-                                <?php echo ($event['category'] ?? '') == 'Seminar' ? 'selected' : ''; ?>>Seminar
+                            <option value="Seminar" <?php echo ($event['category'] ?? '') == 'Seminar' ? 'selected' : ''; ?>>Seminar
                             </option>
-                            <option value="Festival"
-                                <?php echo ($event['category'] ?? '') == 'Festival' ? 'selected' : ''; ?>>Festival
+                            <option value="Festival" <?php echo ($event['category'] ?? '') == 'Festival' ? 'selected' : ''; ?>>Festival
                             </option>
-                            <option value="Sports"
-                                <?php echo ($event['category'] ?? '') == 'Sports' ? 'selected' : ''; ?>>Sports
+                            <option value="Sports" <?php echo ($event['category'] ?? '') == 'Sports' ? 'selected' : ''; ?>>Sports
                             </option>
-                            <option value="Other"
-                                <?php echo ($event['category'] ?? '') == 'Other' ? 'selected' : ''; ?>>Other
+                            <option value="Other" <?php echo ($event['category'] ?? '') == 'Other' ? 'selected' : ''; ?>>
+                                Other
                             </option>
                         </select>
                     </div>
@@ -74,11 +68,11 @@
                     <div class="mb-4">
                         <label for="image" class="block text-gray-700 font-bold mb-2">Event Image</label>
                         <?php if (!empty($event['image'])): ?>
-                        <div class="mb-2">
-                            <img src="<?php echo $event['image']; ?>" alt="Event Image"
-                                class="w-32 h-32 object-cover rounded">
-                            <p class="text-sm text-gray-500 mt-1">Current image</p>
-                        </div>
+                            <div class="mb-2">
+                                <img src="<?php echo $event['image']; ?>" alt="Event Image"
+                                    class="w-32 h-32 object-cover rounded">
+                                <p class="text-sm text-gray-500 mt-1">Current image</p>
+                            </div>
                         <?php endif; ?>
                         <input type="file" id="image" name="image"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500">
@@ -161,143 +155,143 @@
                 <h2 class="text-xl font-bold mb-4">Ticket Types & Pricing</h2>
 
                 <div id="ticket-types-container">
-                    <?php 
-        // Check if we're editing and have ticket types to display
-        if ($action == 'edit' && isset($event['id'])): 
-            // Fetch ticket types for this event
-            $sql = "SELECT * FROM ticket_types WHERE event_id = " . $event['id'] . " ORDER BY price ASC";
-            $ticketTypes = $db->fetchAll($sql);
-            
-            if (!empty($ticketTypes)):
-                foreach ($ticketTypes as $index => $type): 
-        ?>
-                    <div class="ticket-type-row bg-gray-50 p-4 rounded-md mb-4 relative">
-                        <?php if (count($ticketTypes) > 1): ?>
-                        <button type="button" class="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                            onclick="this.parentElement.remove()">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
-                        <?php endif; ?>
-                        <input type="hidden" name="ticket_types[<?php echo $index; ?>][id]"
-                            value="<?php echo $type['id']; ?>">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">Ticket Name *</label>
-                                <input type="text" name="ticket_types[<?php echo $index; ?>][name]"
-                                    value="<?php echo htmlspecialchars($type['name']); ?>"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    required>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">Price
-                                    (<?php echo CURRENCY_SYMBOL; ?>)
-                                    *</label>
-                                <input type="number" name="ticket_types[<?php echo $index; ?>][price]"
-                                    value="<?php echo htmlspecialchars($type['price']); ?>"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    min="0" step="0.01" required>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">Quantity *</label>
-                                <input type="number" name="ticket_types[<?php echo $index; ?>][quantity]"
-                                    value="<?php echo htmlspecialchars($type['total_tickets']); ?>"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    min="1" required>
-                                <?php
-                            // Get tickets sold for this type
-                            $sql = "SELECT COUNT(*) as count FROM tickets WHERE ticket_type_id = " . $type['id'] . " AND status = 'sold'";
-                            $ticketCount = $db->fetchOne($sql);
-                            $soldTickets = $ticketCount['count'] ?? 0;
-                            
-                            if ($soldTickets > 0):
+                    <?php
+                    // Check if we're editing and have ticket types to display
+                    if ($action == 'edit' && isset($event['id'])):
+                        // Fetch ticket types for this event
+                        $sql = "SELECT * FROM ticket_types WHERE event_id = " . $event['id'] . " ORDER BY price ASC";
+                        $ticketTypes = $db->fetchAll($sql);
+
+                        if (!empty($ticketTypes)):
+                            foreach ($ticketTypes as $index => $type):
+                                ?>
+                                <div class="ticket-type-row bg-gray-50 p-4 rounded-md mb-4 relative">
+                                    <?php if (count($ticketTypes) > 1): ?>
+                                        <button type="button" class="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                                            onclick="this.parentElement.remove()">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                    <input type="hidden" name="ticket_types[<?php echo $index; ?>][id]"
+                                        value="<?php echo $type['id']; ?>">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                                        <div>
+                                            <label class="block text-gray-700 font-bold mb-2">Ticket Name *</label>
+                                            <input type="text" name="ticket_types[<?php echo $index; ?>][name]"
+                                                value="<?php echo htmlspecialchars($type['name']); ?>"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                                required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-gray-700 font-bold mb-2">Price
+                                                (<?php echo CURRENCY_SYMBOL; ?>)
+                                                *</label>
+                                            <input type="number" name="ticket_types[<?php echo $index; ?>][price]"
+                                                value="<?php echo htmlspecialchars($type['price']); ?>"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                                min="0" step="0.01" required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-gray-700 font-bold mb-2">Quantity *</label>
+                                            <input type="number" name="ticket_types[<?php echo $index; ?>][quantity]"
+                                                value="<?php echo htmlspecialchars($type['total_tickets']); ?>"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                                min="1" required>
+                                            <?php
+                                            // Get tickets sold for this type
+                                            $sql = "SELECT COUNT(*) as count FROM tickets WHERE ticket_type_id = " . $type['id'] . " AND status = 'sold'";
+                                            $ticketCount = $db->fetchOne($sql);
+                                            $soldTickets = $ticketCount['count'] ?? 0;
+
+                                            if ($soldTickets > 0):
+                                                ?>
+                                                <p class="text-sm text-gray-500 mt-1">
+                                                    <?php echo $soldTickets; ?> tickets already sold. You cannot set quantity less
+                                                    than
+                                                    this.
+                                                </p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-2">Description</label>
+                                        <textarea name="ticket_types[<?php echo $index; ?>][description]"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                            rows="2"><?php echo htmlspecialchars($type['description']); ?></textarea>
+                                    </div>
+                                </div>
+                            <?php
+                            endforeach;
+                        else:
+                            // No ticket types found, show default empty form
                             ?>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    <?php echo $soldTickets; ?> tickets already sold. You cannot set quantity less
-                                    than
-                                    this.
-                                </p>
-                                <?php endif; ?>
+                            <div class="ticket-type-row bg-gray-50 p-4 rounded-md mb-4">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-2">Ticket Name *</label>
+                                        <input type="text" name="ticket_types[0][name]" placeholder="e.g. Regular, VIP, etc."
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                            required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-2">Price
+                                            (<?php echo CURRENCY_SYMBOL; ?>)
+                                            *</label>
+                                        <input type="number" name="ticket_types[0][price]" placeholder="0.00"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                            min="0" step="0.01" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-700 font-bold mb-2">Quantity *</label>
+                                        <input type="number" name="ticket_types[0][quantity]" placeholder="100"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                            min="1" required>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2">Description</label>
+                                    <textarea name="ticket_types[0][description]"
+                                        placeholder="Describe what's included with this ticket type..."
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                        rows="2"></textarea>
+                                </div>
                             </div>
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 font-bold mb-2">Description</label>
-                            <textarea name="ticket_types[<?php echo $index; ?>][description]"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                rows="2"><?php echo htmlspecialchars($type['description']); ?></textarea>
-                        </div>
-                    </div>
-                    <?php 
-                endforeach;
-            else:
-                // No ticket types found, show default empty form
-        ?>
-                    <div class="ticket-type-row bg-gray-50 p-4 rounded-md mb-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">Ticket Name *</label>
-                                <input type="text" name="ticket_types[0][name]" placeholder="e.g. Regular, VIP, etc."
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    required>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">Price
-                                    (<?php echo CURRENCY_SYMBOL; ?>)
-                                    *</label>
-                                <input type="number" name="ticket_types[0][price]" placeholder="0.00"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    min="0" step="0.01" required>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">Quantity *</label>
-                                <input type="number" name="ticket_types[0][quantity]" placeholder="100"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    min="1" required>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 font-bold mb-2">Description</label>
-                            <textarea name="ticket_types[0][description]"
-                                placeholder="Describe what's included with this ticket type..."
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                rows="2"></textarea>
-                        </div>
-                    </div>
-                    <?php 
-            endif;
-        else:
-            // Creating a new event, show default empty form
-        ?>
-                    <div class="ticket-type-row bg-gray-50 p-4 rounded-md mb-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">Ticket Name *</label>
-                                <input type="text" name="ticket_types[0][name]" placeholder="e.g. Regular, VIP, etc."
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    required>
+                        <?php
+                        endif;
+                    else:
+                        // Creating a new event, show default empty form
+                        ?>
+                        <div class="ticket-type-row bg-gray-50 p-4 rounded-md mb-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2">Ticket Name *</label>
+                                    <input type="text" name="ticket_types[0][name]" placeholder="e.g. Regular, VIP, etc."
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                        required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2">Price
+                                        (<?php echo CURRENCY_SYMBOL; ?>)
+                                        *</label>
+                                    <input type="number" name="ticket_types[0][price]" placeholder="0.00"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                        min="0" step="0.01" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2">Quantity *</label>
+                                    <input type="number" name="ticket_types[0][quantity]" placeholder="100"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                                        min="1" required>
+                                </div>
                             </div>
                             <div>
-                                <label class="block text-gray-700 font-bold mb-2">Price
-                                    (<?php echo CURRENCY_SYMBOL; ?>)
-                                    *</label>
-                                <input type="number" name="ticket_types[0][price]" placeholder="0.00"
+                                <label class="block text-gray-700 font-bold mb-2">Description</label>
+                                <textarea name="ticket_types[0][description]"
+                                    placeholder="Describe what's included with this ticket type..."
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    min="0" step="0.01" required>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-bold mb-2">Quantity *</label>
-                                <input type="number" name="ticket_types[0][quantity]" placeholder="100"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                    min="1" required>
+                                    rows="2"></textarea>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-gray-700 font-bold mb-2">Description</label>
-                            <textarea name="ticket_types[0][description]"
-                                placeholder="Describe what's included with this ticket type..."
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
-                                rows="2"></textarea>
-                        </div>
-                    </div>
                     <?php endif; ?>
                 </div>
 
@@ -313,17 +307,14 @@
                         <label for="status" class="block text-gray-700 font-bold mb-2">Event Status</label>
                         <select id="status" name="status"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500">
-                            <option value="active"
-                                <?php echo ($event['status'] ?? '') == 'active' ? 'selected' : ''; ?>>Active
+                            <option value="active" <?php echo ($event['status'] ?? '') == 'active' ? 'selected' : ''; ?>>
+                                Active
                             </option>
-                            <option value="completed"
-                                <?php echo ($event['status'] ?? '') == 'completed' ? 'selected' : ''; ?>>Completed
+                            <option value="completed" <?php echo ($event['status'] ?? '') == 'completed' ? 'selected' : ''; ?>>Completed
                             </option>
-                            <option value="canceled"
-                                <?php echo ($event['status'] ?? '') == 'canceled' ? 'selected' : ''; ?>>Canceled
+                            <option value="canceled" <?php echo ($event['status'] ?? '') == 'canceled' ? 'selected' : ''; ?>>Canceled
                             </option>
-                            <option value="suspended"
-                                <?php echo ($event['status'] ?? '') == 'suspended' ? 'selected' : ''; ?>>Suspended
+                            <option value="suspended" <?php echo ($event['status'] ?? '') == 'suspended' ? 'selected' : ''; ?>>Suspended
                             </option>
                         </select>
                     </div>
@@ -332,17 +323,17 @@
 
             <!-- JavaScript for dynamic ticket types -->
             <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const container = document.getElementById('ticket-types-container');
-                const addButton = document.getElementById('add-ticket-type');
-                let ticketTypeCount =
-                    <?php echo ($action == 'edit' && !empty($ticketTypes)) ? count($ticketTypes) : 1; ?>;
+                document.addEventListener('DOMContentLoaded', function () {
+                    const container = document.getElementById('ticket-types-container');
+                    const addButton = document.getElementById('add-ticket-type');
+                    let ticketTypeCount =
+                        <?php echo ($action == 'edit' && !empty($ticketTypes)) ? count($ticketTypes) : 1; ?>;
 
-                addButton.addEventListener('click', function() {
-                    const newRow = document.createElement('div');
-                    newRow.className = 'ticket-type-row bg-gray-50 p-4 rounded-md mb-4 relative';
+                    addButton.addEventListener('click', function () {
+                        const newRow = document.createElement('div');
+                        newRow.className = 'ticket-type-row bg-gray-50 p-4 rounded-md mb-4 relative';
 
-                    newRow.innerHTML = `
+                        newRow.innerHTML = `
             <button type="button" class="absolute top-2 right-2 text-red-500 hover:text-red-700" onclick="this.parentElement.remove()">
                 <i class="fas fa-times-circle"></i>
             </button>
@@ -374,10 +365,10 @@
             </div>
         `;
 
-                    container.appendChild(newRow);
-                    ticketTypeCount++;
+                        container.appendChild(newRow);
+                        ticketTypeCount++;
+                    });
                 });
-            });
             </script>
 
 

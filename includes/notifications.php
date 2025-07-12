@@ -23,11 +23,11 @@ function sendEmail($to, $subject, $body, $plainText = '', $attachments = [])
     }
 
     // Log the email attempt
-    $sql = "INSERT INTO email_logs (recipient_email, subject, message, status, created_at) 
-            VALUES ('" . $db->escape($to) . "', '" . $db->escape($subject) . "', 
-            '" . $db->escape(substr($body, 0, 1000)) . "', 'pending', NOW())";
+    // $sql = "INSERT INTO email_logs (recipient_email, subject, message, status, created_at) 
+    //         VALUES ('" . $db->escape($to) . "', '" . $db->escape($subject) . "', 
+    //         '" . $db->escape(substr($body, 0, 1000)) . "', 'pending', NOW())";
 
-    $emailLogId = $db->insert($sql);
+    // $emailLogId = $db->insert($sql);
 
     $mail = new PHPMailer(true);
 
@@ -87,8 +87,8 @@ function sendEmail($to, $subject, $body, $plainText = '', $attachments = [])
 
         if ($result) {
             // Update email log status
-            $db->query("UPDATE email_logs SET status = 'sent', sent_at = NOW() WHERE id = $emailLogId");
-            error_log("Email sent successfully to: $to");
+            // $db->query("UPDATE email_logs SET status = 'sent', sent_at = NOW() WHERE id = $emailLogId");
+            // error_log("Email sent successfully to: $to");
             return true;
         } else {
             throw new Exception("Mail send returned false");
