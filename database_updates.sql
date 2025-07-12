@@ -228,5 +228,23 @@ CREATE TABLE IF NOT EXISTS event_analytics (
 -- 21. Add admin_notes column to withdrawals table for admin comments
 ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_notes TEXT AFTER payment_details;
 
+-- Create feedback table
+CREATE TABLE IF NOT EXISTS feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    rating TINYINT CHECK (rating >= 1 AND rating <= 5),
+    status ENUM('pending', 'reviewed', 'resolved') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id),
+    INDEX idx_status (status),
+    INDEX idx_created (created_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- Show completion message
 SELECT 'Database updates completed successfully!' as status; 

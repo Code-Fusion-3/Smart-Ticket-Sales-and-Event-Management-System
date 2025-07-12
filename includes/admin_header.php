@@ -147,6 +147,13 @@ if (!defined('SITE_URL')) {
                         Reports
                     </a>
 
+                    <!-- Feedback Link -->
+                    <a href="<?php echo SITE_URL; ?>/admin/feedback/index.php"
+                        class="sidebar-link flex items-center px-3 sm:px-4 py-2 sm:py-3 text-gray-700 rounded-lg hover:bg-gray-100 text-sm sm:text-base <?php echo (strpos($_SERVER['REQUEST_URI'], '/admin/feedback/') !== false) ? 'active' : ''; ?>">
+                        <i class="fas fa-comment-dots mr-2 sm:mr-3 text-sm sm:text-base"></i>
+                        Feedback
+                    </a>
+
 
                     <div class="border-t border-gray-200 my-3 sm:my-4"></div>
 
