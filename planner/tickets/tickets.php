@@ -104,12 +104,12 @@ if ($action == 'list') {
         </h1>
 
         <?php if ($eventId > 0): ?>
-        <a href="event-details.php?id=<?php echo $eventId; ?>"
+        <a href="../events/event-details.php?id=<?php echo $eventId; ?>"
             class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
             <i class="fas fa-arrow-left mr-2"></i> Back to Event
         </a>
         <?php else: ?>
-        <a href="events.php" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+        <a href="../events/events.php" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
             <i class="fas fa-arrow-left mr-2"></i> Back to Events
         </a>
         <?php endif; ?>

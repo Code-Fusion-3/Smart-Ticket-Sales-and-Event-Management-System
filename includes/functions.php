@@ -62,7 +62,7 @@ function formatTime($time)
 // Format currency
 function formatCurrency($amount)
 {
-    return 'Rwf ' . number_format($amount, 2);
+    return 'Rwf ' . number_format((float)($amount ?? 0), 2);
 }
 
 // Generate random string
