@@ -46,46 +46,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ticket_id'], $_GET['eve
 
     if (!$ticket) {
         $result = [
-            'status' => 'rejected',
-            'message' => 'Ticket not found or invalid'
+            'status' => 'invalid',
+            'message' => 'This ticket is not recognized. Please check the QR code or ID.'
         ];
     } else {
         // Check if ticket has already been used
-        $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
-        $scanCount = $db->fetchOne($sql);
+        $sql = "SELECT verification_time, agent_id FROM ticket_verifications WHERE ticket_id = " . $ticket['id'] . " AND status = 'verified' ORDER BY verification_time ASC LIMIT 1";
+        $scanInfo = $db->fetchOne($sql);
 
-        if ($scanCount['scan_count'] > 0) {
+        $today = date('Y-m-d');
+        $eventDate = $ticket['start_date'];
+        $now = strtotime($today);
+        $eventStart = strtotime($ticket['start_date']);
+        $eventEnd = strtotime($ticket['end_date']);
+
+        if ($scanInfo) {
+            // Already used
+            $agentName = '';
+            if ($scanInfo['agent_id']) {
+                $agentSql = "SELECT username FROM users WHERE id = " . intval($scanInfo['agent_id']);
+                $agentRow = $db->fetchOne($agentSql);
+                $agentName = $agentRow ? $agentRow['username'] : '';
+            }
             $result = [
-                'status' => 'duplicate',
-                'message' => 'Ticket has already been scanned',
+                'status' => 'used',
+                'message' => 'This ticket has already been used for entry on ' . formatDateTime($scanInfo['verification_time']) . ($agentName ? ' by Agent ' . htmlspecialchars($agentName) : ''),
+                'ticket' => $ticket
+            ];
+        } elseif ($now < $eventStart) {
+            // Too early
+            $result = [
+                'status' => 'too_early',
+                'message' => 'This ticket is valid, but the event has not started yet. Please scan again on the event day.',
+                'ticket' => $ticket
+            ];
+        } elseif ($now > $eventEnd) {
+            // Too late
+            $result = [
+                'status' => 'too_late',
+                'message' => 'This ticket is for a past event and cannot be used.',
                 'ticket' => $ticket
             ];
         } else {
-            // Check if event is today
-            $today = date('Y-m-d');
-            $eventDate = $ticket['start_date'];
-
-            if ($eventDate !== $today) {
-                $result = [
-                    'status' => 'rejected',
-                    'message' => 'Event is not today',
-                    'ticket' => $ticket
-                ];
-            } else {
-                // Ticket is valid
-                $result = [
-                    'status' => 'verified',
-                    'message' => 'Ticket is valid',
-                    'ticket' => $ticket
-                ];
-            }
+            // Ticket is valid
+            $result = [
+                'status' => 'verified',
+                'message' => 'Ticket is valid. Welcome!',
+                'ticket' => $ticket
+            ];
         }
 
-        // Record the verification
+        // Record the verification (except for input_error and too_early/too_late/invalid)
         $status = $result['status'];
-        $sql = "INSERT INTO ticket_verifications (ticket_id, agent_id, verification_time, status, notes, created_at) 
-                VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '', NOW())";
-        $db->query($sql);
+        if (in_array($status, ['verified', 'used', 'too_early', 'too_late', 'invalid'])) {
+            $sql = "INSERT INTO ticket_verifications (ticket_id, agent_id, verification_time, status, notes, created_at) 
+                    VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '', NOW())";
+            $db->query($sql);
+        }
 
         // Update ticket status if verified
         if ($status === 'verified') {
@@ -100,7 +117,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notes = trim($_POST['notes'] ?? '');
 
     if (empty($ticketId)) {
-        $error = "Please enter a ticket ID or QR code";
+        $result = [
+            'status' => 'input_error',
+            'message' => 'Please scan a ticket or enter a valid ticket ID/QR code.'
+        ];
     } else {
         // Try to find ticket by ID or QR code (manual entry)
         $sql = "SELECT 
@@ -126,46 +146,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$ticket) {
             $result = [
-                'status' => 'rejected',
-                'message' => 'Ticket not found or invalid'
+                'status' => 'invalid',
+                'message' => 'This ticket is not recognized. Please check the QR code or ID.'
             ];
         } else {
             // Check if ticket has already been used
-            $sql = "SELECT COUNT(*) as scan_count FROM ticket_verifications WHERE ticket_id = " . $ticket['id'];
-            $scanCount = $db->fetchOne($sql);
+            $sql = "SELECT verification_time, agent_id FROM ticket_verifications WHERE ticket_id = " . $ticket['id'] . " AND status = 'verified' ORDER BY verification_time ASC LIMIT 1";
+            $scanInfo = $db->fetchOne($sql);
 
-            if ($scanCount['scan_count'] > 0) {
+            $today = date('Y-m-d');
+            $eventDate = $ticket['start_date'];
+            $now = strtotime($today);
+            $eventStart = strtotime($ticket['start_date']);
+            $eventEnd = strtotime($ticket['end_date']);
+
+            if ($scanInfo) {
+                // Already used
+                $agentName = '';
+                if ($scanInfo['agent_id']) {
+                    $agentSql = "SELECT username FROM users WHERE id = " . intval($scanInfo['agent_id']);
+                    $agentRow = $db->fetchOne($agentSql);
+                    $agentName = $agentRow ? $agentRow['username'] : '';
+                }
                 $result = [
-                    'status' => 'duplicate',
-                    'message' => 'Ticket has already been scanned',
+                    'status' => 'used',
+                    'message' => 'This ticket has already been used for entry on ' . formatDateTime($scanInfo['verification_time']) . ($agentName ? ' by Agent ' . htmlspecialchars($agentName) : ''),
+                    'ticket' => $ticket
+                ];
+            } elseif ($now < $eventStart) {
+                // Too early
+                $result = [
+                    'status' => 'too_early',
+                    'message' => 'This ticket is valid, but the event has not started yet. Please scan again on the event day.',
+                    'ticket' => $ticket
+                ];
+            } elseif ($now > $eventEnd) {
+                // Too late
+                $result = [
+                    'status' => 'too_late',
+                    'message' => 'This ticket is for a past event and cannot be used.',
                     'ticket' => $ticket
                 ];
             } else {
-                // Check if event is today
-                $today = date('Y-m-d');
-                $eventDate = $ticket['start_date'];
-
-                if ($eventDate !== $today) {
-                    $result = [
-                        'status' => 'rejected',
-                        'message' => 'Event is not today',
-                        'ticket' => $ticket
-                    ];
-                } else {
-                    // Ticket is valid
-                    $result = [
-                        'status' => 'verified',
-                        'message' => 'Ticket is valid',
-                        'ticket' => $ticket
-                    ];
-                }
+                // Ticket is valid
+                $result = [
+                    'status' => 'verified',
+                    'message' => 'Ticket is valid. Welcome!',
+                    'ticket' => $ticket
+                ];
             }
 
-            // Record the verification
+            // Record the verification (except for input_error)
             $status = $result['status'];
-            $sql = "INSERT INTO ticket_verifications (ticket_id, agent_id, verification_time, status, notes, created_at) 
-                    VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '" . $db->escape($notes) . "', NOW())";
-            $db->query($sql);
+            if (in_array($status, ['verified', 'used', 'too_early', 'too_late', 'invalid'])) {
+                $sql = "INSERT INTO ticket_verifications (ticket_id, agent_id, verification_time, status, notes, created_at) 
+                        VALUES (" . $ticket['id'] . ", $agentId, NOW(), '" . $db->escape($status) . "', '" . $db->escape($notes) . "', NOW())";
+                $db->query($sql);
+            }
 
             // Update ticket status if verified
             if ($status === 'verified') {
@@ -232,11 +269,20 @@ include '../includes/agent_header.php';
                     case 'verified':
                         echo 'bg-green-600 text-white';
                         break;
-                    case 'rejected':
+                    case 'too_early':
+                        echo 'bg-blue-600 text-white';
+                        break;
+                    case 'too_late':
+                        echo 'bg-gray-600 text-white';
+                        break;
+                    case 'used':
+                        echo 'bg-yellow-600 text-white';
+                        break;
+                    case 'invalid':
                         echo 'bg-red-600 text-white';
                         break;
-                    case 'duplicate':
-                        echo 'bg-yellow-600 text-white';
+                    case 'input_error':
+                        echo 'bg-red-600 text-white';
                         break;
                     default:
                         echo 'bg-gray-600 text-white';
@@ -249,14 +295,20 @@ include '../includes/agent_header.php';
                     <div class="mb-6 text-center">
                         <?php if ($result['status'] === 'verified'): ?>
                             <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
-                        <?php elseif ($result['status'] === 'rejected'): ?>
+                        <?php elseif ($result['status'] === 'too_early'): ?>
+                            <i class="fas fa-clock text-6xl text-blue-500 mb-4"></i>
+                        <?php elseif ($result['status'] === 'too_late'): ?>
+                            <i class="fas fa-calendar-times text-6xl text-gray-500 mb-4"></i>
+                        <?php elseif ($result['status'] === 'used'): ?>
+                            <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
+                        <?php elseif ($result['status'] === 'invalid' || $result['status'] === 'input_error'): ?>
                             <i class="fas fa-times-circle text-6xl text-red-500 mb-4"></i>
                         <?php else: ?>
-                            <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
+                            <i class="fas fa-question-circle text-6xl text-gray-500 mb-4"></i>
                         <?php endif; ?>
 
                         <h3 class="text-2xl font-bold mb-2">
-                            <?php echo ucfirst($result['status']); ?>
+                            <?php echo ucfirst(str_replace('_', ' ', $result['status'])); ?>
                         </h3>
                         <p class="text-gray-600"><?php echo htmlspecialchars($result['message']); ?></p>
                     </div>
