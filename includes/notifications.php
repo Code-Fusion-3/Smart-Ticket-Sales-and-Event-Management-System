@@ -510,4 +510,180 @@ function getNotificationStats()
 
     return $stats;
 }
+
+/**
+ * Send ticket scan notification to ticket owner
+ */
+function sendTicketScanNotification($ticketId, $agentName = '', $scanTime = null)
+{
+    global $db;
+    
+    if (!$scanTime) {
+        $scanTime = date('Y-m-d H:i:s');
+    }
+    
+    // Get ticket and owner details
+    $sql = "SELECT 
+                t.*,
+                e.title as event_title,
+                e.venue,
+                e.city,
+                e.start_date,
+                e.start_time,
+                u.email as owner_email,
+                u.username as owner_name
+            FROM tickets t
+            JOIN events e ON t.event_id = e.id
+            JOIN users u ON t.user_id = u.id
+            WHERE t.id = " . intval($ticketId);
+    
+    $ticket = $db->fetchOne($sql);
+    
+    if (!$ticket || empty($ticket['owner_email'])) {
+        error_log("Could not send scan notification: Ticket not found or no owner email for ticket ID: $ticketId");
+        return false;
+    }
+    
+    // Prepare email content
+    $emailSubject = "🎫 Your Ticket Was Scanned - " . $ticket['event_title'];
+    
+    $emailBody = '
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ticket Scanned - ' . htmlspecialchars($ticket['event_title']) . '</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; }
+            .header { background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 30px; text-align: center; }
+            .content { padding: 30px; }
+            .scan-info { background: #f0fdf4; border: 2px solid #10B981; border-radius: 10px; padding: 20px; margin: 20px 0; }
+            .ticket-details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .footer { background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+            .info-item { padding: 10px; background: white; border-radius: 6px; border: 1px solid #e5e7eb; }
+            .info-label { font-weight: bold; color: #10B981; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+            .info-value { font-size: 14px; }
+            .success-icon { font-size: 48px; margin-bottom: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="success-icon">✅</div>
+                <h1>Ticket Successfully Scanned!</h1>
+                <p>Your ticket has been verified and you have entered the event</p>
+            </div>
+            
+            <div class="content">
+                <div class="scan-info">
+                    <h2 style="color: #10B981; margin-top: 0;">🎉 Welcome to ' . htmlspecialchars($ticket['event_title']) . '!</h2>
+                    <p>Your ticket was successfully scanned and verified. Enjoy your event!</p>
+                    
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Scan Time</div>
+                            <div class="info-value">' . formatDateTime($scanTime) . '</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Scanned By</div>
+                            <div class="info-value">' . htmlspecialchars($agentName ?: 'Event Staff') . '</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Ticket ID</div>
+                            <div class="info-value">#' . $ticket['id'] . '</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Ticket Holder</div>
+                            <div class="info-value">' . htmlspecialchars($ticket['recipient_name'] ?: $ticket['owner_name']) . '</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ticket-details">
+                    <h3 style="color: #374151; margin-top: 0;">Event Details</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Event</div>
+                            <div class="info-value">' . htmlspecialchars($ticket['event_title']) . '</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Date & Time</div>
+                            <div class="info-value">' . formatDate($ticket['start_date']) . '<br>' . formatTime($ticket['start_time']) . '</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Venue</div>
+                            <div class="info-value">' . htmlspecialchars($ticket['venue']) . '<br>' . htmlspecialchars($ticket['city']) . '</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Ticket Type</div>
+                            <div class="info-value">' . htmlspecialchars($ticket['ticket_type'] ?? 'General') . '</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <h4 style="color: #92400e; margin-top: 0;">📋 Important Reminders</h4>
+                    <ul style="color: #92400e; margin: 0; padding-left: 20px;">
+                        <li>Keep your ticket safe throughout the event</li>
+                        <li>Follow all event rules and guidelines</li>
+                        <li>Have a great time!</li>
+                    </ul>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="' . SITE_URL . '/my-tickets.php" style="background: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                        View My Tickets
+                    </a>
+                </div>
+                
+                <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h4 style="color: #374151; margin-top: 0;">Need Help?</h4>
+                    <p style="margin: 5px 0;"><strong>Website:</strong> <a href="' . SITE_URL . '">' . SITE_NAME . '</a></p>
+                    <p style="margin: 5px 0;"><strong>Email:</strong> ' . SMTP_FROM_EMAIL . '</p>
+                    <p style="margin: 5px 0;"><strong>Phone:</strong> +250 123 456 789</p>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>&copy; ' . date('Y') . ' ' . SITE_NAME . '. All rights reserved.</p>
+                <p>This is an automated notification. Please do not reply to this message.</p>
+            </div>
+        </div>
+    </body>
+    </html>';
+    
+    // Create plain text version
+    $plainText = "Your ticket for " . $ticket['event_title'] . " has been successfully scanned!\n\n" .
+                 "Scan Time: " . formatDateTime($scanTime) . "\n" .
+                 "Scanned By: " . ($agentName ?: 'Event Staff') . "\n" .
+                 "Ticket ID: #" . $ticket['id'] . "\n" .
+                 "Event: " . $ticket['event_title'] . "\n" .
+                 "Date: " . formatDate($ticket['start_date']) . " at " . formatTime($ticket['start_time']) . "\n" .
+                 "Venue: " . $ticket['venue'] . ", " . $ticket['city'] . "\n\n" .
+                 "Enjoy your event!\n\n" .
+                 SITE_NAME;
+    
+    // Send the email
+    $emailResult = sendEmail($ticket['owner_email'], $emailSubject, $emailBody, $plainText);
+    
+    if ($emailResult) {
+        error_log("Ticket scan notification sent successfully to: " . $ticket['owner_email'] . " for ticket ID: " . $ticketId);
+        
+        // Create in-app notification
+        $notificationTitle = "Ticket Scanned: " . $ticket['event_title'];
+        $notificationMessage = "Your ticket for " . $ticket['event_title'] . " was successfully scanned at " . formatDateTime($scanTime) . ".";
+        
+        $db->query("INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                    VALUES (" . $ticket['user_id'] . ", '" . $db->escape($notificationTitle) . "', 
+                    '" . $db->escape($notificationMessage) . "', 'ticket', 0, NOW())");
+        
+        return true;
+    } else {
+        error_log("Failed to send ticket scan notification to: " . $ticket['owner_email'] . " for ticket ID: " . $ticketId);
+        return false;
+    }
+}
 ?>

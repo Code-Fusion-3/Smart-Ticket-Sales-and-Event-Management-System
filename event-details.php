@@ -348,7 +348,7 @@ include 'includes/header.php';
         <p class="font-bold">Sold Out!</p>
         <p>Sorry, there are no more tickets available for this event.</p>
     </div>
-    <?php elseif (strtotime($event['end_date']) < time()): ?>
+    <?php elseif (strtotime($event['end_date'] . ' ' . $event['end_time']) < time()): ?>
     <div class="bg-gray-100 text-gray-700 p-4 rounded-lg mb-4">
         <p class="font-bold">Event Has Ended</p>
         <p>This event has already finished. Ticket sales are now closed.</p>

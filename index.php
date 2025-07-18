@@ -4,7 +4,32 @@ require_once 'includes/config.php';
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
 
-/// Get upcoming and ongoing events with ticket type pricing
+// Get featured events for slides (events with images, upcoming, good availability)
+$slidesSql = "SELECT e.*, u.username as planner_name,
+        (SELECT MIN(tt.price) FROM ticket_types tt WHERE tt.event_id = e.id AND tt.available_tickets > 0) as min_price,
+        (SELECT MAX(tt.price) FROM ticket_types tt WHERE tt.event_id = e.id AND tt.available_tickets > 0) as max_price,
+        (SELECT COUNT(*) FROM ticket_types tt WHERE tt.event_id = e.id AND tt.available_tickets > 0) as ticket_types_count,
+        (SELECT SUM(tt.available_tickets) FROM ticket_types tt WHERE tt.event_id = e.id) as total_available_tickets,
+        CASE 
+            WHEN CURDATE() < e.start_date THEN 'upcoming'
+            WHEN CURDATE() BETWEEN e.start_date AND e.end_date THEN 'ongoing'
+            ELSE 'past'
+        END as event_status
+        FROM events e 
+        JOIN users u ON e.planner_id = u.id 
+        WHERE e.end_date >= CURDATE() 
+        AND e.status = 'active' 
+        AND e.available_tickets > 0
+        AND e.image IS NOT NULL 
+        AND e.image != ''
+        AND e.start_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        ORDER BY 
+            CASE WHEN CURDATE() BETWEEN e.start_date AND e.end_date THEN 1 ELSE 2 END,
+            e.start_date ASC 
+        LIMIT 6";
+$slideEvents = $db->fetchAll($slidesSql);
+
+// Get upcoming and ongoing events with ticket type pricing (existing query)
 $sql = "SELECT e.*, u.username as planner_name,
         (SELECT MIN(tt.price) FROM ticket_types tt WHERE tt.event_id = e.id AND tt.available_tickets > 0) as min_price,
         (SELECT MAX(tt.price) FROM ticket_types tt WHERE tt.event_id = e.id AND tt.available_tickets > 0) as max_price,
@@ -25,7 +50,6 @@ $sql = "SELECT e.*, u.username as planner_name,
             e.start_date ASC 
         LIMIT 6";
 $events = $db->fetchAll($sql);
-
 
 include 'includes/header.php';
 ?>
@@ -61,14 +85,200 @@ include 'includes/header.php';
     .progress-bar {
         transition: width 1s ease-in-out;
     }
+
+    /* Event Slides Carousel Styles */
+    .slides-container {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .slide {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 1s ease-in-out;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+    .slide.active {
+        opacity: 1;
+    }
+
+    .slide-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        padding: 2rem;
+        color: white;
+    }
+
+    .carousel-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        padding: 1rem 0.75rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 10;
+    }
+
+    .carousel-nav:hover {
+        background: rgba(0, 0, 0, 0.8);
+    }
+
+    .carousel-nav.prev {
+        left: 1rem;
+    }
+
+    .carousel-nav.next {
+        right: 1rem;
+    }
+
+    .carousel-dots {
+        position: absolute;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 0.5rem;
+        z-index: 10;
+    }
+
+    .carousel-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .carousel-dot.active {
+        background: white;
+        transform: scale(1.2);
+    }
+
+    .event-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .event-badge.live {
+        background: rgba(239, 68, 68, 0.9);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
 </style>
-<div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-    <div class="container mx-auto px-4 py-16">
-        <div class="text-center">
+
+<!-- Event Slides Hero Section -->
+<div class="relative bg-gray-900 text-white overflow-hidden">
+    <?php if (!empty($slideEvents)): ?>
+        <!-- Slides Container -->
+        <div class="slides-container relative h-96 md:h-[500px]">
+            <?php foreach ($slideEvents as $index => $event): ?>
+                <div class="slide <?php echo $index === 0 ? 'active' : ''; ?>" 
+                     data-slide="<?php echo $index; ?>"
+                     style="background-image: url('<?php echo SITE_URL; ?>/uploads/events/<?php echo htmlspecialchars($event['image']); ?>')">
+                    
+                    <!-- Event Badge -->
+                    <div class="event-badge <?php echo $event['event_status'] === 'ongoing' ? 'live' : ''; ?>">
+                        <?php if ($event['event_status'] === 'ongoing'): ?>
+                            <i class="fas fa-circle mr-1"></i>LIVE NOW
+                        <?php else: ?>
+                            <i class="fas fa-clock mr-1"></i>UPCOMING
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Slide Content Overlay -->
+                    <div class="slide-overlay">
+                        <div class="container mx-auto">
+                            <h2 class="text-2xl md:text-4xl font-bold mb-2"><?php echo htmlspecialchars($event['title']); ?></h2>
+                            <p class="text-lg md:text-xl mb-3 opacity-90">
+                                <i class="fas fa-map-marker-alt mr-2"></i>
+                                <?php echo htmlspecialchars($event['venue']) . ', ' . htmlspecialchars($event['city']); ?>
+                            </p>
+                            <p class="text-base md:text-lg mb-4 opacity-90">
+                                <i class="fas fa-calendar-day mr-2"></i>
+                                <?php echo formatDate($event['start_date']); ?> at <?php echo formatTime($event['start_time']); ?>
+                            </p>
+                            <div class="flex flex-wrap gap-4 items-center">
+                                <a href="event-details.php?id=<?php echo $event['id']; ?>" 
+                                   class="bg-white text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-gray-100 transition duration-300">
+                                    <?php echo $event['event_status'] === 'ongoing' ? 'Join Now' : 'View Details'; ?>
+                                </a>
+                                <span class="text-sm opacity-75">
+                                    <?php
+                                    $availableTickets = $event['total_available_tickets'] ?? $event['available_tickets'];
+                                    echo $availableTickets . ' tickets available';
+                                    ?>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+
+            <!-- Navigation Arrows -->
+            <button class="carousel-nav prev" onclick="changeSlide(-1)">
+                <i class="fas fa-chevron-left text-xl"></i>
+            </button>
+            <button class="carousel-nav next" onclick="changeSlide(1)">
+                <i class="fas fa-chevron-right text-xl"></i>
+            </button>
+
+            <!-- Dots Navigation -->
+            <div class="carousel-dots">
+                <?php foreach ($slideEvents as $index => $event): ?>
+                    <div class="carousel-dot <?php echo $index === 0 ? 'active' : ''; ?>" 
+                         onclick="goToSlide(<?php echo $index; ?>)"></div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php else: ?>
+        <!-- Fallback when no events with images -->
+        <div class="slides-container relative h-96 md:h-[500px]">
+            <div class="slide active" style="background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="slide-overlay">
+                    <div class="container mx-auto text-center">
+                        <h2 class="text-2xl md:text-4xl font-bold mb-2">Welcome to <?php echo SITE_NAME; ?></h2>
+                        <p class="text-lg md:text-xl mb-4 opacity-90">Discover amazing events in your area</p>
+                        <a href="events.php" class="bg-white text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-gray-100 transition duration-300">
+                            Browse Events
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Hero Content Overlay -->
+    <div class="absolute inset-0 bg-black bg-opacity-30 flex items-center">
+        <div class="container mx-auto px-4 text-center">
             <h1 class="text-4xl md:text-6xl font-bold mb-4">Find Amazing Events</h1>
             <p class="text-xl md:text-2xl mb-8">Discover and book tickets for the best events in your area</p>
             <a href="events.php"
-                class="bg-white text-indigo-600 font-bold py-3 px-8 rounded-lg hover:bg-gray-100 transition duration-300">
+                class="bg-white text-gray-900 font-bold py-3 px-8 rounded-lg hover:bg-gray-100 transition duration-300">
                 Browse All Events
             </a>
         </div>
@@ -385,7 +595,79 @@ include 'includes/header.php';
         </div>
     </div>
 </div>
+
 <script>
+    // Event Slides Carousel JavaScript
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const dots = document.querySelectorAll('.carousel-dot');
+    let slideInterval;
+
+    function showSlide(index) {
+        // Hide all slides
+        slides.forEach(slide => slide.classList.remove('active'));
+        dots.forEach(dot => dot.classList.remove('active'));
+        
+        // Show current slide
+        if (slides[index]) {
+            slides[index].classList.add('active');
+        }
+        if (dots[index]) {
+            dots[index].classList.add('active');
+        }
+        
+        currentSlide = index;
+    }
+
+    function nextSlide() {
+        const next = (currentSlide + 1) % slides.length;
+        showSlide(next);
+    }
+
+    function prevSlide() {
+        const prev = (currentSlide - 1 + slides.length) % slides.length;
+        showSlide(prev);
+    }
+
+    function changeSlide(direction) {
+        if (direction > 0) {
+            nextSlide();
+        } else {
+            prevSlide();
+        }
+        resetInterval();
+    }
+
+    function goToSlide(index) {
+        showSlide(index);
+        resetInterval();
+    }
+
+    function resetInterval() {
+        clearInterval(slideInterval);
+        startAutoPlay();
+    }
+
+    function startAutoPlay() {
+        if (slides.length > 1) {
+            slideInterval = setInterval(nextSlide, 5000); // Change slide every 5 seconds
+        }
+    }
+
+    // Start auto-play when page loads
+    document.addEventListener('DOMContentLoaded', function () {
+        if (slides.length > 1) {
+            startAutoPlay();
+        }
+
+        // Pause auto-play on hover
+        const slidesContainer = document.querySelector('.slides-container');
+        if (slidesContainer) {
+            slidesContainer.addEventListener('mouseenter', () => clearInterval(slideInterval));
+            slidesContainer.addEventListener('mouseleave', startAutoPlay);
+        }
+    });
+
     // Optional: Add some JavaScript for dynamic effects
     document.addEventListener('DOMContentLoaded', function () {
         // Animate progress bars on scroll
@@ -564,7 +846,7 @@ include 'includes/header.php';
                     let errors = error.errors || [error.message || 'An error occurred.'];
                     feedbackResponse.className =
                         'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4';
-                    feedbackResponse.innerHTML = '<ul class="list-disc pl-4"><li>' + errors.join('</li><li>') + '</li></ul>';
+                    feedbackResponse.innerHTML = '<ul class="list-disc pl-4><li>' + errors.join('</li><li>') + '</li></ul>';
                     feedbackResponse.classList.remove('hidden');
                     alert('Error submitting feedback. Please try again or contact support if the problem persists.');
                 })

@@ -4,6 +4,7 @@ require_once '../includes/config.php';
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
 require_once '../includes/auth.php';
+require_once '../includes/notifications.php';
 
 // Check if user has agent permission
 checkPermission('agent');
@@ -41,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ticket_id'], $_GET['eve
                 AND t.event_id = '" . $db->escape($eventId) . "' 
                 AND t.user_id = '" . $db->escape($userId) . "' 
                 AND t.qr_code = '" . $db->escape($verificationToken) . "' 
-                AND t.status = 'sold'";
+                AND t.status IN ('sold', 'used')";
     $ticket = $db->fetchOne($sql);
 
     if (!$ticket) {
@@ -108,6 +109,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ticket_id'], $_GET['eve
         if ($status === 'verified') {
             $sql = "UPDATE tickets SET status = 'used', updated_at = NOW() WHERE id = " . $ticket['id'];
             $db->query($sql);
+            
+            // Send scan notification to ticket owner
+            $agentName = '';
+            if ($agentId) {
+                $agentSql = "SELECT username FROM users WHERE id = " . intval($agentId);
+                $agentRow = $db->fetchOne($agentSql);
+                $agentName = $agentRow ? $agentRow['username'] : '';
+            }
+            
+            // Send email notification to ticket owner
+            sendTicketScanNotification($ticket['id'], $agentName, date('Y-m-d H:i:s'));
         }
     }
 }
@@ -140,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 LEFT JOIN ticket_types tt ON t.ticket_type_id = tt.id
                 LEFT JOIN users u ON e.planner_id = u.id
                 WHERE (t.id = '" . $db->escape($ticketId) . "' OR t.qr_code = '" . $db->escape($ticketId) . "')
-                AND t.status = 'sold'";
+                AND t.status IN ('sold', 'used')";
 
         $ticket = $db->fetchOne($sql);
 
@@ -208,6 +220,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($status === 'verified') {
                 $sql = "UPDATE tickets SET status = 'used', updated_at = NOW() WHERE id = " . $ticket['id'];
                 $db->query($sql);
+                
+                // Send scan notification to ticket owner
+                $agentName = '';
+                if ($agentId) {
+                    $agentSql = "SELECT username FROM users WHERE id = " . intval($agentId);
+                    $agentRow = $db->fetchOne($agentSql);
+                    $agentName = $agentRow ? $agentRow['username'] : '';
+                }
+                
+                // Send email notification to ticket owner
+                sendTicketScanNotification($ticket['id'], $agentName, date('Y-m-d H:i:s'));
             }
         }
     }
