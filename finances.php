@@ -81,16 +81,15 @@ include 'includes/header.php';
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
                 <?php foreach ($transactions as $t): ?>
-                    <tr class="hover:bg-indigo-50 transition">
-                        <td class="px-4 py-3 text-sm">
-                            <?php
+                <tr class="hover:bg-indigo-50 transition">
+                    <td class="px-4 py-3 text-sm">
+                        <?php
                             $type = strtolower($t['type']);
                             $typeColors = [
                                 'deposit' => 'bg-blue-100 text-blue-800',
@@ -102,17 +101,17 @@ include 'includes/header.php';
                             ];
                             $typeClass = $typeColors[$type] ?? 'bg-gray-100 text-gray-800';
                             ?>
-                            <span class="px-2 py-1 rounded-full text-xs font-semibold <?php echo $typeClass; ?>"
-                                title="<?php echo ucfirst($type); ?>">
-                                <?php echo ucfirst($type); ?>
-                            </span>
-                        </td>
-                        <td
-                            class="px-4 py-3 text-sm font-bold <?php echo ($type === 'withdrawal') ? 'text-green-700' : (($type === 'deposit') ? 'text-blue-700' : 'text-gray-900'); ?>">
-                            <?php echo formatCurrency($t['amount']); ?>
-                        </td>
-                        <td class="px-4 py-3 text-sm">
-                            <?php
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold <?php echo $typeClass; ?>"
+                            title="<?php echo ucfirst($type); ?>">
+                            <?php echo ucfirst($type); ?>
+                        </span>
+                    </td>
+                    <td
+                        class="px-4 py-3 text-sm font-bold <?php echo ($type === 'withdrawal') ? 'text-green-700' : (($type === 'deposit') ? 'text-blue-700' : 'text-gray-900'); ?>">
+                        <?php echo formatCurrency($t['amount']); ?>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                        <?php
                             $status = strtolower($t['status']);
                             $statusColors = [
                                 'pending' => 'bg-yellow-100 text-yellow-800',
@@ -123,24 +122,23 @@ include 'includes/header.php';
                             ];
                             $statusClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-800';
                             ?>
-                            <span class="px-2 py-1 rounded-full text-xs font-semibold <?php echo $statusClass; ?>">
-                                <?php echo ucfirst($status); ?>
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-sm"><?php echo htmlspecialchars($t['payment_method'] ?? ''); ?></td>
-                        <td class="px-4 py-3 text-xs"><?php echo htmlspecialchars($t['reference_id'] ?? ''); ?></td>
-                        <td class="px-4 py-3 text-xs">
-                            <?php echo htmlspecialchars($t['description'] ?? ''); ?>
-                            <?php if ($type === 'withdrawal'): ?>
-                                <span class="ml-1 text-green-600" title="This is a withdrawal transaction."><i
-                                        class="fas fa-arrow-up"></i></span>
-                            <?php elseif ($type === 'deposit'): ?>
-                                <span class="ml-1 text-blue-600" title="This is a deposit transaction."><i
-                                        class="fas fa-arrow-down"></i></span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="px-4 py-3 text-xs"><?php echo formatDateTime($t['created_at']); ?></td>
-                    </tr>
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold <?php echo $statusClass; ?>">
+                            <?php echo ucfirst($status); ?>
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm"><?php echo htmlspecialchars($t['payment_method'] ?? ''); ?></td>
+                    <td class="px-4 py-3 text-xs">
+                        <?php echo htmlspecialchars($t['description'] ?? ''); ?>
+                        <?php if ($type === 'withdrawal'): ?>
+                        <span class="ml-1 text-green-600" title="This is a withdrawal transaction."><i
+                                class="fas fa-arrow-up"></i></span>
+                        <?php elseif ($type === 'deposit'): ?>
+                        <span class="ml-1 text-blue-600" title="This is a deposit transaction."><i
+                                class="fas fa-arrow-down"></i></span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="px-4 py-3 text-xs"><?php echo formatDateTime($t['created_at']); ?></td>
+                </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>

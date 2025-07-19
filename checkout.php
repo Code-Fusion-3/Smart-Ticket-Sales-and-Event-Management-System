@@ -328,6 +328,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
                                         The remaining <?php echo formatCurrency($total - $user['balance']); ?> will be
                                         charged to your selected payment method.
                                     </p>
+                                    <a href="deposit.php"
+                                        class="inline-flex items-center mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200">
+                                        <i class="fas fa-plus-circle mr-2"></i> Quick Deposit
+                                    </a>
                                     <?php else: ?>
                                     <p class="text-sm text-green-700 mt-1 font-semibold">
                                         Your balance is sufficient to cover the entire purchase.<br>
@@ -337,6 +341,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
                                     <?php endif; ?>
                                 </div>
                             </label>
+                        </div>
+                        <?php elseif ($user['balance'] <= 0): ?>
+                        <div
+                            class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between">
+                            <span class="font-medium text-yellow-800">
+                                Your account balance is low. You can make a quick deposit to top up before checkout.
+                            </span>
+                            <a href="deposit.php"
+                                class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition duration-200 ml-4">
+                                <i class="fas fa-plus-circle mr-2"></i> Quick Deposit
+                            </a>
                         </div>
                         <?php endif; ?>
 
