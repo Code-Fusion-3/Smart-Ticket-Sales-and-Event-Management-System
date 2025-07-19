@@ -472,7 +472,7 @@ include 'includes/header.php';
                                             <i class="fas fa-mobile-alt text-2xl text-gray-500 mr-3"></i>
                                             <div>
                                                 <div class="font-medium text-gray-900">Mobile Money</div>
-                                                <div class="text-sm text-gray-500">MTN, Airtel, Vodafone</div>
+                                                <div class="text-sm text-gray-500">MTN, Airtel</div>
                                             </div>
                                         </div>
                                     </div>
