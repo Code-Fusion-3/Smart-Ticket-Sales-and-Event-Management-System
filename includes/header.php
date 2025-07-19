@@ -60,6 +60,7 @@ require_once 'auth.php';
                                 }
                                 ?>
                     </a>
+
                     <?php endif; ?>
                     <?php else: ?>
                     <a href="<?php echo SITE_URL; ?>/marketplace.php" class="hover:text-indigo-200">Marketplace</a>
@@ -95,7 +96,11 @@ require_once 'auth.php';
                             class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <i class="fas fa-wallet mr-2"></i>Finances
                         </a>
-                        <a href="<?php echo SITE_URL; ?>/my-tickets.php"
+                        <a href="<?php echo SITE_URL; ?>/withdraw.php"
+                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-money-bill-wave mr-2"></i>Withdraw
+                        </a>
+                        <a href="<?php echo SITE_URL; ?>/deposit.php"
                             class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <i class="fas fa-ticket-alt mr-2"></i>Deposits
                         </a>
@@ -157,6 +162,9 @@ require_once 'auth.php';
                     </a>
                     <a href="<?php echo SITE_URL; ?>/finances.php" class="block py-2 hover:text-indigo-200">
                         <i class="fas fa-wallet mr-2"></i>Finances
+                    </a>
+                    <a href="<?php echo SITE_URL; ?>/withdraw.php" class="block py-2 hover:text-indigo-200">
+                        <i class="fas fa-money-bill-wave mr-2"></i>Withdraw
                     </a>
                 </div>
                 <?php endif; ?>
