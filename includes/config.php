@@ -11,7 +11,7 @@ define('DB_NAME', 'ticket_management_system');
 
 // Website configuration
 define('SITE_NAME', 'Smart Ticket Sales and Event Management System');
-define('SITE_URL', 'http://10.42.0.213:3000');
+define('SITE_URL', 'http://localhost:3000');
 
 // File paths
 define('ROOT_PATH', dirname(__DIR__) . '/');

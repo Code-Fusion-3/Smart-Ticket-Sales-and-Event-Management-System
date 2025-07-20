@@ -24,16 +24,35 @@ include 'checkout-logics.php';
 
 // Process form submission for Stripe redirect
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['payment_method']) && $_POST['payment_method'] === 'credit_card' && ($user['balance'] < $total)) {
+        // Get booking type
+        $bookingType = $_POST['booking_type'] ?? 'full_payment';
+        
+        // Calculate amount based on booking type
+        $stripeAmount = $total;
+        if ($bookingType === 'partial_booking') {
+            $stripeAmount = $total * 0.5; // 50% deposit
+        }
+        
+        // Store booking type and amount in session for Stripe success handler
+        $_SESSION['stripe_booking_type'] = $bookingType;
+        $_SESSION['stripe_amount'] = $stripeAmount;
+        
         // Prepare line items for Stripe
         $line_items = [];
         foreach ($cartItems as $item) {
+            $itemPrice = $item['ticket_price'];
+            if ($bookingType === 'partial_booking') {
+                $itemPrice = $itemPrice * 0.5; // 50% of ticket price
+            }
+            
             $line_items[] = [
                 'price_data' => [
                     'currency' => 'rwf',
                     'product_data' => [
                         'name' => $item['title'] . ' - ' . $item['ticket_name'],
+                        'description' => $bookingType === 'partial_booking' ? '50% Deposit Booking' : 'Full Payment',
                     ],
-                    'unit_amount' => intval($item['ticket_price'] * 1), // Stripe expects cents
+                    'unit_amount' => intval($itemPrice), // Stripe expects cents
                 ],
                 'quantity' => $item['quantity'],
             ];
@@ -46,6 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
             'customer_email' => $user['email'],
             'success_url' => SITE_URL . '/stripe-payment-success.php?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => SITE_URL . '/checkout.php?canceled=1',
+            'metadata' => [
+                'booking_type' => $bookingType,
+                'total_amount' => $total,
+                'stripe_amount' => $stripeAmount,
+                'user_id' => $userId
+            ]
         ]);
         echo "<script>window.location.href='" . addslashes($session->url) . "';</script>";
         exit;
@@ -355,11 +380,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
                         </div>
                         <?php endif; ?>
 
+                        <!-- Booking Option Selection -->
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                            <div class="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 py-4">
+                                <h2 class="text-xl font-bold flex items-center">
+                                    <i class="fas fa-calendar-check mr-2"></i>
+                                    Booking Options
+                                </h2>
+                            </div>
+
+                            <div class="p-6">
+                                <div class="space-y-4">
+                                    <!-- Full Payment Option -->
+                                    <label
+                                        class="flex items-start cursor-pointer p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                        <input type="radio" name="booking_type" value="full_payment" checked
+                                            class="form-radio h-5 w-5 text-indigo-600 focus:ring-indigo-500 mt-1">
+                                        <div class="ml-3 flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-gray-900 font-medium">Buy Now (Full Payment)</span>
+                                                <span
+                                                    class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Recommended</span>
+                                            </div>
+                                            <p class="text-sm text-gray-600 mt-1">Pay the full amount and get your
+                                                tickets immediately</p>
+                                            <div class="text-lg font-bold text-indigo-600 mt-2">
+                                                Total: <?php echo formatCurrency($total); ?>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <!-- 50% Booking Option -->
+                                    <label
+                                        class="flex items-start cursor-pointer p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                        <input type="radio" name="booking_type" value="partial_booking"
+                                            class="form-radio h-5 w-5 text-indigo-600 focus:ring-indigo-500 mt-1">
+                                        <div class="ml-3 flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-gray-900 font-medium">Book Now (50% Deposit)</span>
+                                                <span
+                                                    class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">Limited
+                                                    Time</span>
+                                            </div>
+                                            <p class="text-sm text-gray-600 mt-1">Pay 50% now to reserve your tickets.
+                                                Pay the remaining 50% within 24 hours before the event </p>
+                                            <div class="space-y-1 mt-2">
+                                                <div class="text-sm">
+                                                    <span class="text-gray-600">Deposit (50%):</span>
+                                                    <span
+                                                        class="font-bold text-orange-600"><?php echo formatCurrency($total * 0.5); ?></span>
+                                                </div>
+                                                <div class="text-sm">
+                                                    <span class="text-gray-600">Remaining (50%):</span>
+                                                    <span
+                                                        class="font-bold text-gray-600"><?php echo formatCurrency($total * 0.5); ?></span>
+                                                </div>
+
+                                                <div class="text-xs text-gray-500">
+                                                    <i class="fas fa-clock mr-1"></i>Payment deadline: 24 hours before
+                                                    event
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <!-- Booking Terms -->
+                                <div class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                    <div class="flex items-start">
+                                        <i class="fas fa-exclamation-triangle text-orange-500 mt-0.5 mr-2"></i>
+                                        <div class="text-sm text-orange-700">
+                                            <p class="font-medium">Important Booking Terms:</p>
+                                            <ul class="list-disc list-inside mt-1 space-y-1">
+                                                <li>50% booking reserves your tickets for 24 hours before the event</li>
+                                                <li><strong>If remaining payment is not made, you will lose your
+                                                        payed Money</strong></li>
+                                                <li>Full payment required to receive actual tickets</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Payment Method Selection -->
                         <div id="payment-method-selection"
                             class="mb-6 <?php echo ($user['balance'] >= $total) ? 'hidden' : ''; ?>">
                             <label class="block text-gray-700 font-bold mb-4">Select Payment Method</label>
-
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <!-- Credit Card -->
                                 <label
@@ -460,7 +567,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
                             <button type="submit" id="payment-button"
                                 class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-lg transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300">
                                 <i class="fas fa-lock mr-2"></i>
-                                Complete Secure Purchase - <?php echo formatCurrency($total); ?>
+                                <span id="payment-button-text">Complete Secure Purchase -
+                                    <?php echo formatCurrency($total); ?></span>
                             </button>
                         </div>
 
@@ -560,6 +668,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
                                     <?php echo formatCurrency($total); ?>
                                 </span>
                             </div>
+                            <div class="flex justify-between items-center mt-2" id="booking-amount"
+                                style="display: none;">
+                                <span class="text-sm text-gray-600">Amount to Pay (50%)</span>
+                                <span class="text-lg font-bold text-orange-600" id="booking-amount-value">
+                                    <?php echo formatCurrency($total * 0.5); ?>
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -620,3 +735,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors) && isset($_POST['pay
 <!-- Enhanced JavaScript for Checkout -->
 <?php include 'checkout-js.php' ?>
 <?php include 'includes/footer.php'; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bookingTypeRadios = document.querySelectorAll('input[name="booking_type"]');
+    const finalTotal = document.getElementById('final-total');
+    const bookingAmount = document.getElementById('booking-amount');
+    const bookingAmountValue = document.getElementById('booking-amount-value');
+
+    const total = <?php echo $total; ?>;
+    const depositAmount = total * 0.5;
+
+    function updateBookingDisplay() {
+        const selectedBookingType = document.querySelector('input[name="booking_type"]:checked').value;
+
+        if (selectedBookingType === 'partial_booking') {
+            // Show 50% booking option
+            finalTotal.textContent = formatCurrency(depositAmount);
+            bookingAmount.style.display = 'flex';
+            bookingAmountValue.textContent = formatCurrency(depositAmount);
+        } else {
+            // Show full payment option
+            finalTotal.textContent = formatCurrency(total);
+            bookingAmount.style.display = 'none';
+        }
+    }
+
+    // Add event listeners to booking type radios
+    bookingTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            updateBookingDisplay();
+        });
+    });
+
+    // Initialize display
+    updateBookingDisplay();
+
+    // Currency formatting function
+    function formatCurrency(amount) {
+        return 'Rwf ' + parseFloat(amount).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+});
+</script>

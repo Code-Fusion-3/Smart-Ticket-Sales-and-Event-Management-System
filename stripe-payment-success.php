@@ -181,6 +181,8 @@ try {
     $subtotal = $_SESSION['stripe_subtotal'];
     $fees = $_SESSION['stripe_fees'];
     $balanceUsed = $_SESSION['stripe_balance_used'];
+    $bookingType = $_SESSION['stripe_booking_type'] ?? 'full_payment';
+    $stripeAmount = $_SESSION['stripe_amount'] ?? $total;
 
     // Clear session data
     unset($_SESSION['stripe_cart_items']);
@@ -189,6 +191,8 @@ try {
     unset($_SESSION['stripe_subtotal']);
     unset($_SESSION['stripe_fees']);
     unset($_SESSION['stripe_balance_used']);
+    unset($_SESSION['stripe_booking_type']);
+    unset($_SESSION['stripe_amount']);
 
     if (empty($cartItems)) {
         $_SESSION['error_message'] = "No items found in session.";
@@ -210,15 +214,17 @@ try {
         $db->query("START TRANSACTION");
 
         // Record Stripe payment transaction
+        $transactionDescription = $bookingType === 'partial_booking' ? 'Booking deposit via Stripe' : 'Ticket purchase via Stripe';
         $paymentTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, payment_method, description)
-            VALUES ($userId, $total, 'purchase', 'completed', '$sessionId', 'credit_card', 'Ticket purchase via Stripe')");
+            VALUES ($userId, $stripeAmount, 'purchase', 'completed', '$sessionId', 'credit_card', '$transactionDescription')");
 
         if (!$paymentTransactionResult) {
             throw new Exception("Failed to record payment transaction");
         }
 
-        // Process each cart item and create tickets
+        // Process each cart item and create tickets or bookings
         $generatedTickets = [];
+        $generatedBookings = [];
 
         foreach ($cartItems as $item) {
             $eventId = $item['event_id'];
@@ -240,30 +246,117 @@ try {
                 }
             }
 
-            // Create individual tickets
-            for ($i = 0; $i < $quantity; $i++) {
-                $recipient = $recipientData[$cartItemId][$i];
+            if ($bookingType === 'full_payment') {
+                // Create individual tickets for full payment
+                for ($i = 0; $i < $quantity; $i++) {
+                    $recipient = $recipientData[$cartItemId][$i];
 
-                // Generate unique QR code
-                $qrCode = 'TICKET-' . generateRandomString(16);
+                    // Generate unique QR code
+                    $qrCode = 'TICKET-' . generateRandomString(16);
 
-                // Insert ticket with proper escaping
-                $ticketSql = "INSERT INTO tickets (event_id, ticket_type_id, user_id, recipient_name, recipient_email, recipient_phone, qr_code, purchase_price, status, created_at)
-                     VALUES ($eventId, " . ($ticketTypeId ? $ticketTypeId : "NULL") . ", $userId, 
-                             '" . $db->escape($recipient['name']) . "', 
-                             '" . $db->escape($recipient['email']) . "', 
-                             '" . $db->escape($recipient['phone']) . "', 
-                             '$qrCode', $price, 'sold', NOW())";
+                    // Insert ticket with proper escaping
+                    $ticketSql = "INSERT INTO tickets (event_id, ticket_type_id, user_id, recipient_name, recipient_email, recipient_phone, qr_code, purchase_price, status, created_at)
+                         VALUES ($eventId, " . ($ticketTypeId ? $ticketTypeId : "NULL") . ", $userId, 
+                                 '" . $db->escape($recipient['name']) . "', 
+                                 '" . $db->escape($recipient['email']) . "', 
+                                 '" . $db->escape($recipient['phone']) . "', 
+                                 '$qrCode', $price, 'sold', NOW())";
 
-                $ticketId = $db->insert($ticketSql);
+                    $ticketId = $db->insert($ticketSql);
 
-                if (!$ticketId) {
-                    throw new Exception("Failed to create ticket for {$item['title']}");
+                    if (!$ticketId) {
+                        throw new Exception("Failed to create ticket for {$item['title']}");
+                    }
+
+                    // Store ticket info for notifications
+                    $generatedTickets[] = [
+                        'id' => $ticketId,
+                        'event_id' => $eventId,
+                        'ticket_type_id' => $ticketTypeId,
+                        'event_title' => $item['title'],
+                        'ticket_name' => $item['ticket_name'],
+                        'ticket_description' => $item['ticket_description'],
+                        'venue' => $item['venue'],
+                        'city' => $item['city'],
+                        'start_date' => $item['start_date'],
+                        'start_time' => $item['start_time'],
+                        'recipient_name' => $recipient['name'],
+                        'recipient_email' => $recipient['email'],
+                        'recipient_phone' => $recipient['phone'],
+                        'purchase_price' => $price,
+                        'qr_code' => $qrCode,
+                        'planner_name' => $item['planner_name']
+                    ];
                 }
 
-                // Store ticket info for notifications
-                $generatedTickets[] = [
-                    'id' => $ticketId,
+                // Update ticket availability for full payment
+                if ($ticketTypeId) {
+                    $updateTicketTypeResult = $db->query("UPDATE ticket_types SET available_tickets = available_tickets - $quantity WHERE id = $ticketTypeId");
+                    if (!$updateTicketTypeResult) {
+                        throw new Exception("Failed to update ticket type availability");
+                    }
+                }
+
+                $updateEventResult = $db->query("UPDATE events SET available_tickets = available_tickets - $quantity WHERE id = $eventId");
+                if (!$updateEventResult) {
+                    throw new Exception("Failed to update event availability");
+                }
+            } else {
+                // Create booking for partial payment
+                $bookingReference = generateRandomString(12);
+                $bookingPrice = $price * $quantity;
+                $depositAmount = $bookingPrice * 0.5; // 50% deposit
+
+                // Insert booking record
+                $bookingSql = "INSERT INTO bookings (user_id, event_id, ticket_type_id, quantity, total_amount, amount_paid, status, payment_status, transaction_id, created_at)
+                    VALUES ($userId, $eventId, " . ($ticketTypeId ? $ticketTypeId : "NULL") . ", $quantity, $bookingPrice, $depositAmount, 'pending', 'partial', '$bookingReference', NOW())";
+                $bookingId = $db->insert($bookingSql);
+
+                if (!$bookingId) {
+                    throw new Exception("Failed to create booking for {$item['title']}");
+                }
+
+                // Get event planner ID for deposit payment
+                $eventSql = "SELECT planner_id FROM events WHERE id = $eventId";
+                $eventResult = $db->fetchOne($eventSql);
+                $plannerId = $eventResult['planner_id'];
+
+                // Calculate planner earnings for deposit (50% minus system fee)
+                $systemFeePercentage = 5.0; // Get from system_fees table
+                $systemFeeSql = "SELECT percentage FROM system_fees WHERE fee_type = 'ticket_sale'";
+                $feeResult = $db->fetchOne($systemFeeSql);
+                if ($feeResult) {
+                    $systemFeePercentage = $feeResult['percentage'];
+                }
+
+                $systemFeeAmount = ($depositAmount * $systemFeePercentage) / 100;
+                $plannerEarning = $depositAmount - $systemFeeAmount;
+
+                // Update planner's balance for deposit
+                $updatePlannerBalanceResult = $db->query("UPDATE users SET balance = balance + $plannerEarning WHERE id = $plannerId");
+                if (!$updatePlannerBalanceResult) {
+                    throw new Exception("Failed to update planner balance for deposit");
+                }
+
+                // Record deposit transaction for planner
+                $depositTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
+                    VALUES ($plannerId, $plannerEarning, 'sale', 'completed', '$bookingReference', 'Booking deposit for event: " . $db->escape($item['title']) . "')");
+
+                if (!$depositTransactionResult) {
+                    throw new Exception("Failed to record planner deposit transaction");
+                }
+
+                // Record system fee transaction for deposit
+                $depositFeeTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
+                    VALUES ($plannerId, $systemFeeAmount, 'system_fee', 'completed', '$bookingReference', 'Platform fee for booking deposit: " . $db->escape($item['title']) . "')");
+
+                if (!$depositFeeTransactionResult) {
+                    throw new Exception("Failed to record planner deposit system fee transaction");
+                }
+
+                // Store booking info for notifications
+                $generatedBookings[] = [
+                    'id' => $bookingId,
                     'event_id' => $eventId,
                     'ticket_type_id' => $ticketTypeId,
                     'event_title' => $item['title'],
@@ -273,94 +366,81 @@ try {
                     'city' => $item['city'],
                     'start_date' => $item['start_date'],
                     'start_time' => $item['start_time'],
-                    'recipient_name' => $recipient['name'],
-                    'recipient_email' => $recipient['email'],
-                    'recipient_phone' => $recipient['phone'],
-                    'purchase_price' => $price,
-                    'qr_code' => $qrCode,
+                    'quantity' => $quantity,
+                    'price' => $bookingPrice,
+                    'reference' => $bookingReference,
                     'planner_name' => $item['planner_name']
                 ];
             }
-
-            // Update ticket availability
-            if ($ticketTypeId) {
-                $updateTicketTypeResult = $db->query("UPDATE ticket_types SET available_tickets = available_tickets - $quantity WHERE id = $ticketTypeId");
-                if (!$updateTicketTypeResult) {
-                    throw new Exception("Failed to update ticket type availability");
-                }
-            }
-
-            $updateEventResult = $db->query("UPDATE events SET available_tickets = available_tickets - $quantity WHERE id = $eventId");
-            if (!$updateEventResult) {
-                throw new Exception("Failed to update event availability");
-            }
         }
 
-        // Process planner earnings for each event
+        // Process planner earnings for each event (only for full payments)
         $plannerEarnings = [];
-        foreach ($cartItems as $item) {
-            $eventId = $item['event_id'];
-            $quantity = $item['quantity'];
-            $price = $item['ticket_price'];
-            $totalAmount = $price * $quantity;
+        if ($bookingType === 'full_payment') {
+            foreach ($cartItems as $item) {
+                $eventId = $item['event_id'];
+                $quantity = $item['quantity'];
+                $price = $item['ticket_price'];
+                $totalAmount = $price * $quantity;
 
-            // Get event planner ID
-            $eventSql = "SELECT planner_id FROM events WHERE id = $eventId";
-            $eventResult = $db->fetchOne($eventSql);
+                // Get event planner ID
+                $eventSql = "SELECT planner_id FROM events WHERE id = $eventId";
+                $eventResult = $db->fetchOne($eventSql);
 
-            if ($eventResult) {
-                $plannerId = $eventResult['planner_id'];
+                if ($eventResult) {
+                    $plannerId = $eventResult['planner_id'];
 
-                // Calculate planner earnings (total amount minus system fee)
-                $systemFeePercentage = 5.0; // Get from system_fees table
-                $systemFeeSql = "SELECT percentage FROM system_fees WHERE fee_type = 'ticket_sale'";
-                $feeResult = $db->fetchOne($systemFeeSql);
-                if ($feeResult) {
-                    $systemFeePercentage = $feeResult['percentage'];
-                }
+                    // Calculate planner earnings (total amount minus system fee)
+                    $systemFeePercentage = 5.0; // Get from system_fees table
+                    $systemFeeSql = "SELECT percentage FROM system_fees WHERE fee_type = 'ticket_sale'";
+                    $feeResult = $db->fetchOne($systemFeeSql);
+                    if ($feeResult) {
+                        $systemFeePercentage = $feeResult['percentage'];
+                    }
 
-                $systemFeeAmount = ($totalAmount * $systemFeePercentage) / 100;
-                $plannerEarning = $totalAmount - $systemFeeAmount;
+                    $systemFeeAmount = ($totalAmount * $systemFeePercentage) / 100;
+                    $plannerEarning = $totalAmount - $systemFeeAmount;
 
-                // Update planner's balance
-                $updatePlannerBalanceResult = $db->query("UPDATE users SET balance = balance + $plannerEarning WHERE id = $plannerId");
-                if (!$updatePlannerBalanceResult) {
-                    throw new Exception("Failed to update planner balance");
-                }
+                    // Update planner's balance
+                    $updatePlannerBalanceResult = $db->query("UPDATE users SET balance = balance + $plannerEarning WHERE id = $plannerId");
+                    if (!$updatePlannerBalanceResult) {
+                        throw new Exception("Failed to update planner balance");
+                    }
 
-                // Record sale transaction for planner
-                $saleTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
-                    VALUES ($plannerId, $plannerEarning, 'sale', 'completed', '$sessionId', 'Ticket sale for event: " . $db->escape($item['title']) . "')");
+                    // Record sale transaction for planner
+                    $saleTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
+                        VALUES ($plannerId, $plannerEarning, 'sale', 'completed', '$sessionId', 'Ticket sale for event: " . $db->escape($item['title']) . "')");
 
-                if (!$saleTransactionResult) {
-                    throw new Exception("Failed to record planner sale transaction");
-                }
+                    if (!$saleTransactionResult) {
+                        throw new Exception("Failed to record planner sale transaction");
+                    }
 
-                // Record system fee transaction for planner
-                $plannerFeeTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
-                    VALUES ($plannerId, $systemFeeAmount, 'system_fee', 'completed', '$sessionId', 'Platform fee for ticket sale: " . $db->escape($item['title']) . "')");
+                    // Record system fee transaction for planner
+                    $plannerFeeTransactionResult = $db->query("INSERT INTO transactions (user_id, amount, type, status, reference_id, description)
+                        VALUES ($plannerId, $systemFeeAmount, 'system_fee', 'completed', '$sessionId', 'Platform fee for ticket sale: " . $db->escape($item['title']) . "')");
 
-                if (!$plannerFeeTransactionResult) {
-                    throw new Exception("Failed to record planner system fee transaction");
-                }
+                    if (!$plannerFeeTransactionResult) {
+                        throw new Exception("Failed to record planner system fee transaction");
+                    }
 
-                // Store planner earnings info for notifications
-                if (!isset($plannerEarnings[$plannerId])) {
-                    $plannerEarnings[$plannerId] = [
-                        'total_earnings' => 0,
-                        'total_fees' => 0,
-                        'events' => []
+                    // Store planner earnings info for notifications
+                    if (!isset($plannerEarnings[$plannerId])) {
+                        $plannerEarnings[$plannerId] = [
+                            'total_earnings' => 0,
+                            'total_fees' => 0,
+                            'events' => []
+                        ];
+                    }
+
+                    $plannerEarnings[$plannerId]['total_earnings'] += $plannerEarning;
+                    $plannerEarnings[$plannerId]['total_fees'] += $systemFeeAmount;
+                    $plannerEarnings[$plannerId]['events'][] = [
+                        'title' => $item['title'],
+                        'quantity' => $quantity,
+                        'amount' => $plannerEarning,
+                        'fee' => $systemFeeAmount
                     ];
                 }
-
-                $plannerEarnings[$plannerId]['total_earnings'] += $plannerEarning;
-                $plannerEarnings[$plannerId]['total_fees'] += $systemFeeAmount;
-                $plannerEarnings[$plannerId]['events'][] = [
-                    'title' => $item['title'],
-                    'quantity' => $quantity,
-                    'amount' => $plannerEarning,
-                    'fee' => $systemFeeAmount
-                ];
             }
         }
 
@@ -525,6 +605,63 @@ try {
 
         error_log("Notification Summary: $successfulEmails/$totalTickets emails sent, $successfulSMS/$totalTickets SMS sent");
 
+        // Send booking notifications for partial payments
+        if ($bookingType === 'partial_booking' && !empty($generatedBookings)) {
+            foreach ($generatedBookings as $booking) {
+                try {
+                    // Create in-app notification for booking
+                    $bookingNotificationTitle = "Booking Created: {$booking['ticket_name']}";
+                    $bookingNotificationMessage = "Your booking for {$booking['event_title']} has been created. Complete the remaining payment before the event.";
+
+                    $bookingNotificationResult = $db->query("INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                        VALUES ($userId, '" . $db->escape($bookingNotificationTitle) . "', '" . $db->escape($bookingNotificationMessage) . "', 'payment', 0, NOW())");
+
+                    if ($bookingNotificationResult) {
+                        error_log("Booking notification created for user: $userId");
+                    } else {
+                        error_log("Failed to create booking notification for user: $userId");
+                    }
+
+                    // Send email notification for booking
+                    if (function_exists('sendEmail')) {
+                        $bookingEmailSubject = "Booking Confirmation - {$booking['event_title']}";
+                        $bookingEmailBody = "
+                        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+                            <h2 style='color: #6366f1;'>Booking Confirmation</h2>
+                            <p>Hello,</p>
+                            <p>Your booking has been successfully created!</p>
+                            
+                            <div style='background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                                <h3>Booking Details:</h3>
+                                <p><strong>Event:</strong> {$booking['event_title']}</p>
+                                <p><strong>Ticket Type:</strong> {$booking['ticket_name']}</p>
+                                <p><strong>Quantity:</strong> {$booking['quantity']}</p>
+                                <p><strong>Total Amount:</strong> " . formatCurrency($booking['price']) . "</p>
+                                <p><strong>Deposit Paid:</strong> " . formatCurrency($booking['price'] * 0.5) . "</p>
+                                <p><strong>Remaining Payment:</strong> " . formatCurrency($booking['price'] * 0.5) . "</p>
+                                <p><strong>Booking Reference:</strong> {$booking['reference']}</p>
+                                <p><strong>Event Date:</strong> {$booking['start_date']} at {$booking['start_time']}</p>
+                                <p><strong>Venue:</strong> {$booking['venue']}, {$booking['city']}</p>
+                            </div>
+                            
+                            <p><strong>Important:</strong> Please complete the remaining payment before the event. You can do this from your 'My Bookings' page.</p>
+                            <p>Thank you for choosing our platform!</p>
+                        </div>";
+
+                        $bookingEmailResult = sendEmail($user['email'], $bookingEmailSubject, $bookingEmailBody);
+
+                        if ($bookingEmailResult) {
+                            error_log("Booking email sent successfully to: " . $user['email']);
+                        } else {
+                            error_log("Failed to send booking email to: " . $user['email']);
+                        }
+                    }
+                } catch (Exception $bookingNotificationError) {
+                    error_log("Booking notification error: " . $bookingNotificationError->getMessage());
+                }
+            }
+        }
+
         // Send notifications to planners about their ticket sales
         foreach ($plannerEarnings as $plannerId => $earnings) {
             try {
@@ -588,27 +725,48 @@ try {
         }
 
         // Store order details in session for confirmation page
-        $_SESSION['order_details'] = [
-            'reference' => $sessionId,
-            'total_amount' => $total,
-            'total_tickets' => $totalTickets,
-            'payment_method' => 'credit_card',
-            'balance_used' => 0,
-            'tickets' => $generatedTickets
-        ];
+        if ($bookingType === 'full_payment') {
+            $_SESSION['order_details'] = [
+                'reference' => $sessionId,
+                'total_amount' => $total,
+                'total_tickets' => $totalTickets,
+                'payment_method' => 'credit_card',
+                'balance_used' => 0,
+                'tickets' => $generatedTickets
+            ];
 
-        // Store order reference for order confirmation page
-        $_SESSION['order_reference'] = $sessionId;
+            // Store order reference for order confirmation page
+            $_SESSION['order_reference'] = $sessionId;
 
-        // Set success message
-        $_SESSION['success_message'] = "🎉 Payment successful! Your " . count($generatedTickets) . " ticket" . (count($generatedTickets) > 1 ? 's have' : ' has') . " been purchased and sent to your email.";
+            // Set success message for full payment
+            $_SESSION['success_message'] = "🎉 Payment successful! Your " . count($generatedTickets) . " ticket" . (count($generatedTickets) > 1 ? 's have' : ' has') . " been purchased and sent to your email.";
 
-        // If single ticket, redirect to view that ticket
-        if (count($generatedTickets) === 1) {
-            redirect('view-ticket.php?id=' . $generatedTickets[0]['id'] . '&new=1');
+            // If single ticket, redirect to view that ticket
+            if (count($generatedTickets) === 1) {
+                redirect('view-ticket.php?id=' . $generatedTickets[0]['id'] . '&new=1');
+            } else {
+                // Multiple tickets, redirect to order confirmation
+                redirect('order-confirmation.php');
+            }
         } else {
-            // Multiple tickets, redirect to order confirmation
-            redirect('order-confirmation.php');
+            // Store booking details in session
+            $_SESSION['booking_details'] = [
+                'reference' => $sessionId,
+                'total_amount' => $total,
+                'deposit_amount' => $stripeAmount,
+                'payment_method' => 'credit_card',
+                'balance_used' => 0,
+                'bookings' => $generatedBookings
+            ];
+
+            // Store booking reference
+            $_SESSION['booking_reference'] = $sessionId;
+
+            // Set success message for booking
+            $_SESSION['success_message'] = "🎉 Booking deposit successful! Your " . count($generatedBookings) . " booking" . (count($generatedBookings) > 1 ? 's have' : ' has') . " been created. Complete the remaining payment before the event.";
+
+            // Redirect to my-bookings page
+            redirect('my-bookings.php');
         }
 
     } catch (Exception $e) {
