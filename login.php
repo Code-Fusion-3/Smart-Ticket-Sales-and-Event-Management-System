@@ -21,7 +21,7 @@ if (isLoggedIn()) {
 
 $email = '';
 $errors = [];
-
+    
 // Process login form
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
