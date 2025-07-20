@@ -265,11 +265,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // Insert ticket with proper escaping
                             $ticketSql = "INSERT INTO tickets (event_id, ticket_type_id, user_id, recipient_name, recipient_email, recipient_phone, qr_code, purchase_price, status, created_at)
-                                 VALUES ($eventId, " . ($ticketTypeId ? $ticketTypeId : "NULL") . ", $userId, 
-                                         '" . $db->escape($recipient['name']) . "', 
-                                         '" . $db->escape($recipient['email']) . "', 
-                                         '" . $db->escape($recipient['phone']) . "', 
-                                         '$qrCode', $price, 'sold', NOW())";
+                             VALUES ($eventId, " . ($ticketTypeId ? $ticketTypeId : "NULL") . ", $userId, 
+                                     '" . $db->escape($recipient['name']) . "', 
+                                     '" . $db->escape($recipient['email']) . "', 
+                                     '" . $db->escape($recipient['phone']) . "', 
+                                     '$qrCode', $price, 'sold', NOW())";
 
                             $ticketId = $db->insert($ticketSql);
 

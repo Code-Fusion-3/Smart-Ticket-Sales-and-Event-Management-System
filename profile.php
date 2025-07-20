@@ -239,39 +239,39 @@ include 'includes/header.php';
     <h1 class="text-3xl font-bold mb-6">My Profile</h1>
 
     <?php if (!empty($errors)): ?>
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-exclamation-circle"></i>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-sm font-medium">Please fix the following errors:</h3>
-                    <div class="mt-2 text-sm">
-                        <ul class="list-disc pl-5 space-y-1">
-                            <?php foreach ($errors as $error): ?>
-                                <li><?php echo htmlspecialchars($error); ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium">Please fix the following errors:</h3>
+                <div class="mt-2 text-sm">
+                    <ul class="list-disc pl-5 space-y-1">
+                        <?php foreach ($errors as $error): ?>
+                        <li><?php echo htmlspecialchars($error); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
                 </div>
             </div>
         </div>
+    </div>
     <?php endif; ?>
 
     <?php if ($success): ?>
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-sm font-medium">Success!</h3>
-                    <div class="mt-2 text-sm">
-                        <p>Your profile has been updated successfully.</p>
-                    </div>
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium">Success!</h3>
+                <div class="mt-2 text-sm">
+                    <p>Your profile has been updated successfully.</p>
                 </div>
             </div>
         </div>
+    </div>
     <?php endif; ?>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -290,13 +290,13 @@ include 'includes/header.php';
                             <div class="flex items-center">
                                 <div class="mr-4 profile-preview">
                                     <?php if (!empty($user['profile_image'])): ?>
-                                        <img src="<?php echo SITE_URL . '/' . $user['profile_image']; ?>" alt="Profile"
-                                            class="w-24 h-24 rounded-full object-cover border-2 border-gray-200">
+                                    <img src="<?php echo SITE_URL . '/' . $user['profile_image']; ?>" alt="Profile"
+                                        class="w-24 h-24 rounded-full object-cover border-2 border-gray-200">
                                     <?php else: ?>
-                                        <div
-                                            class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-200">
-                                            <i class="fas fa-user text-gray-500 text-4xl"></i>
-                                        </div>
+                                    <div
+                                        class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-200">
+                                        <i class="fas fa-user text-gray-500 text-4xl"></i>
+                                    </div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="flex-1">
@@ -462,25 +462,24 @@ include 'includes/header.php';
                     ?>
 
                     <?php if ($canDelete): ?>
-                        <button onclick="showDeleteModal()"
-                            class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-200">
-                            <i class="fas fa-trash mr-2"></i>Delete My Account
-                        </button>
+                    <button onclick="showDeleteModal()"
+                        class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-200">
+                        <i class="fas fa-trash mr-2"></i>Delete My Account
+                    </button>
                     <?php else: ?>
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-info-circle text-yellow-400"></i>
-                                </div>
-                                <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-yellow-800">Cannot Delete Account</h3>
-                                    <div class="mt-2 text-sm text-yellow-700">
-                                        <p>You have <?php echo $activeTickets['count']; ?> active ticket(s). Please use or
-                                            transfer them first.</p>
-                                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-info-circle text-yellow-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-yellow-800">Cannot Delete Account</h3>
+                                <div class="mt-2 text-sm text-yellow-700">
+                                    <p>You have <?php echo $activeTickets['count']; ?> active ticket(s).</p>
                                 </div>
                             </div>
                         </div>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -548,118 +547,118 @@ include 'includes/header.php';
 </div>
 
 <script>
-    function showDeleteModal() {
-        document.getElementById('deleteModal').classList.remove('hidden');
+function showDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+function hideDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideDeleteModal();
     }
+});
 
-    function hideDeleteModal() {
-        document.getElementById('deleteModal').classList.add('hidden');
-    }
-
-    // Close modal when clicking outside
-    document.getElementById('deleteModal').addEventListener('click', function (e) {
-        if (e.target === this) {
-            hideDeleteModal();
-        }
-    });
-
-    // Profile image preview
-    document.getElementById('profile_image').addEventListener('change', function (e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const preview = document.querySelector('.profile-preview img') ||
-                    document.querySelector('.profile-preview .bg-gray-300');
-                if (preview) {
-                    if (preview.tagName === 'IMG') {
-                        preview.src = e.target.result;
-                    } else {
-                        // Replace placeholder with image
-                        preview.outerHTML =
-                            `<img src="${e.target.result}" alt="Profile Preview" class="w-24 h-24 rounded-full object-cover border-2 border-gray-200">`;
-                    }
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    // Password validation
-    document.getElementById('new_password').addEventListener('input', function () {
-        const password = this.value;
-        const confirmPassword = document.getElementById('confirm_password').value;
-        const confirmField = document.getElementById('confirm_password');
-
-        // Remove existing validation classes
-        this.classList.remove('border-red-500', 'border-green-500');
-        confirmField.classList.remove('border-red-500', 'border-green-500');
-
-        if (password.length > 0) {
-            if (password.length < 6) {
-                this.classList.add('border-red-500');
-            } else {
-                this.classList.add('border-green-500');
-            }
-
-            if (confirmPassword.length > 0) {
-                if (password === confirmPassword) {
-                    confirmField.classList.add('border-green-500');
+// Profile image preview
+document.getElementById('profile_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.querySelector('.profile-preview img') ||
+                document.querySelector('.profile-preview .bg-gray-300');
+            if (preview) {
+                if (preview.tagName === 'IMG') {
+                    preview.src = e.target.result;
                 } else {
-                    confirmField.classList.add('border-red-500');
+                    // Replace placeholder with image
+                    preview.outerHTML =
+                        `<img src="${e.target.result}" alt="Profile Preview" class="w-24 h-24 rounded-full object-cover border-2 border-gray-200">`;
                 }
             }
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Password validation
+document.getElementById('new_password').addEventListener('input', function() {
+    const password = this.value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const confirmField = document.getElementById('confirm_password');
+
+    // Remove existing validation classes
+    this.classList.remove('border-red-500', 'border-green-500');
+    confirmField.classList.remove('border-red-500', 'border-green-500');
+
+    if (password.length > 0) {
+        if (password.length < 6) {
+            this.classList.add('border-red-500');
+        } else {
+            this.classList.add('border-green-500');
         }
-    });
 
-    document.getElementById('confirm_password').addEventListener('input', function () {
-        const password = document.getElementById('new_password').value;
-        const confirmPassword = this.value;
-
-        this.classList.remove('border-red-500', 'border-green-500');
-
-        if (confirmPassword.length > 0 && password.length > 0) {
+        if (confirmPassword.length > 0) {
             if (password === confirmPassword) {
-                this.classList.add('border-green-500');
+                confirmField.classList.add('border-green-500');
             } else {
-                this.classList.add('border-red-500');
+                confirmField.classList.add('border-red-500');
             }
         }
-    });
+    }
+});
 
-    // Form validation
-    document.querySelector('form').addEventListener('submit', function (e) {
-        const newPassword = document.getElementById('new_password').value;
-        const confirmPassword = document.getElementById('confirm_password').value;
-        const currentPassword = document.getElementById('current_password').value;
+document.getElementById('confirm_password').addEventListener('input', function() {
+    const password = document.getElementById('new_password').value;
+    const confirmPassword = this.value;
 
-        // Check if password fields are partially filled
-        if ((newPassword || confirmPassword || currentPassword) &&
-            (!newPassword || !confirmPassword || !currentPassword)) {
-            e.preventDefault();
-            alert('Please fill in all password fields if you want to change your password.');
-            return false;
+    this.classList.remove('border-red-500', 'border-green-500');
+
+    if (confirmPassword.length > 0 && password.length > 0) {
+        if (password === confirmPassword) {
+            this.classList.add('border-green-500');
+        } else {
+            this.classList.add('border-red-500');
         }
+    }
+});
 
-        // Check if passwords match
-        if (newPassword && confirmPassword && newPassword !== confirmPassword) {
-            e.preventDefault();
-            alert('New password and confirm password do not match.');
-            return false;
-        }
-    });
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const newPassword = document.getElementById('new_password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const currentPassword = document.getElementById('current_password').value;
 
-    // Auto-hide success message after 5 seconds
-    setTimeout(function () {
-        const successMessage = document.querySelector('.bg-green-100');
-        if (successMessage) {
-            successMessage.style.transition = 'opacity 0.5s ease-out';
-            successMessage.style.opacity = '0';
-            setTimeout(function () {
-                successMessage.remove();
-            }, 500);
-        }
-    }, 5000);
+    // Check if password fields are partially filled
+    if ((newPassword || confirmPassword || currentPassword) &&
+        (!newPassword || !confirmPassword || !currentPassword)) {
+        e.preventDefault();
+        alert('Please fill in all password fields if you want to change your password.');
+        return false;
+    }
+
+    // Check if passwords match
+    if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+        e.preventDefault();
+        alert('New password and confirm password do not match.');
+        return false;
+    }
+});
+
+// Auto-hide success message after 5 seconds
+setTimeout(function() {
+    const successMessage = document.querySelector('.bg-green-100');
+    if (successMessage) {
+        successMessage.style.transition = 'opacity 0.5s ease-out';
+        successMessage.style.opacity = '0';
+        setTimeout(function() {
+            successMessage.remove();
+        }, 500);
+    }
+}, 5000);
 </script>
 
 <?php include 'includes/footer.php'; ?>
