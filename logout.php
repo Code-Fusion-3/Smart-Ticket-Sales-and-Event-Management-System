@@ -10,9 +10,9 @@ if (isLoggedIn()) {
     if (isset($_COOKIE['remember_token'])) {
         $token = $_COOKIE['remember_token'];
         
-        // Delete token from database
-        $sql = "DELETE FROM user_tokens WHERE token = '" . $db->escape($token) . "'";
-        $db->query($sql);
+        // // Delete token from database
+        // $sql = "DELETE FROM user_tokens WHERE token = '" . $db->escape($token) . "'";
+        // $db->query($sql);
         
         // Expire the cookie
         setcookie('remember_token', '', time() - 3600, '/', '', false, true);

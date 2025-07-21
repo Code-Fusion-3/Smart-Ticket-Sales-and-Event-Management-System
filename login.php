@@ -50,10 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $userId = $result['user']['id'];
                 $expiry = time() + (30 * 24 * 60 * 60); // 30 days
                 
-                // Store token in database
-                $sql = "INSERT INTO user_tokens (user_id, token, expires_at) 
-                        VALUES ($userId, '" . $db->escape($token) . "', FROM_UNIXTIME($expiry))";
-                $db->query($sql);
+                // // Store token in database
+                // $sql = "INSERT INTO user_tokens (user_id, token, expires_at) 
+                //         VALUES ($userId, '" . $db->escape($token) . "', FROM_UNIXTIME($expiry))";
+                // $db->query($sql);
                 
                 // Set cookie
                 setcookie('remember_token', $token, $expiry, '/', '', false, true);
